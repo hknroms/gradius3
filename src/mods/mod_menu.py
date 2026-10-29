@@ -256,7 +256,7 @@ def build_data(base):
     put('PS_U0', b'>CUBE HUNTER\0')
     put('PS_U1', b' CUBE HUNTER\0')
     put('PS_ON', b'ON \0')
-    # 無敵のときだけ出す: 装備（#36 の続き。再開のときにメインがやり直す）と MISS（自分で死ぬ）
+    # NO DEATH のときだけ出す: 装備（#36 の続き。再開のときにメインがやり直す）と MISS（自分で死ぬ）
     for k, t in [('ES', 'SPEED'), ('EM', 'MISSILE'), ('ED', 'DOUBLE/LASER'), ('EO', 'OPTION'), ('EH', 'SHIELD'), ('X', 'MISS')]:
         put('PS_%s0' % k, b'>' + t.encode() + b'\0'); put('PS_%s1' % k, b' ' + t.encode() + b'\0')
     for i in range(6): put('EN_%d' % i, b'%d     \0' % i)
@@ -1814,15 +1814,15 @@ PW      = 21
 PI_EQ   = 6                ; PTAB の装備の項目の始め（6〜10 = 装備、11 = MISS）。12〜16 = キューブラッシュの項目
 PI_MISS = 11
 PI_CUBE = 12
-; ---- 出す項目の表を作る: いつもの6つ ＋ 無敵なら装備と MISS ＋ キューブラッシュならキューブの5つ。d6 = 数 ----
+; ---- 出す項目の表を作る: いつもの6つ ＋ NO DEATH なら装備と MISS ＋ キューブラッシュならキューブの5つ。d6 = 数 ----
 PMap:   lea     V_PMAP.l,a0
         moveq   #0,d0
 pm_b:   move.b  d0,(a0)+
         addq.b  #1,d0
         cmpi.b  #PI_EQ,d0
         bcs.s   pm_b
-        tst.b   MBS_INV.l
-        beq.s   pm_c
+        cmpi.b  #1,$203f0b.l    ; 装備と MISS は NO DEATH のときだけ（2026-10-29 管理者。INVINCIBLE はリリースで外すので）
+        bne.s   pm_c
 pm_e:   move.b  d0,(a0)+
         addq.b  #1,d0
         cmpi.b  #PI_CUBE,d0
