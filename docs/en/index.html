@@ -48,6 +48,8 @@ code{font-size:12.5px;background:color-mix(in srgb,var(--sub) 15%,transparent);p
 #auth-status{white-space:pre-wrap}
 #member-bar{display:none;max-width:860px;margin:12px auto 0;padding:0 16px;text-align:right;font-size:13px;color:var(--sub)}
 #member-bar button{padding:4px 10px;font-size:12px;margin-left:10px}
+
+.hist>summary{font-size:15px}.hist .hv{border-top:1px solid var(--line);padding:6px 0}.hist .hv:first-of-type{border-top:0}.hist .hv>details>summary{font-weight:400;font-size:14px}
 </style>
 </head>
 <body>
@@ -299,7 +301,11 @@ function verHtml(v0, open) {
   const L = DATA.versions[0];
   $('#latest').innerHTML = verHtml(L, true); $('#latest-ver').textContent = 'v' + L.version + (L.date ? ' (' + L.date + ')' : '');
   // (version is filled in on testplay.html)   // 報告ページの「版」を入力済みに
-  $('#history').innerHTML = DATA.versions.slice(1).map(v => `<div class="panel">${verHtml(v, false)}</div>`).join('');
+  // 更新履歴: 0.4 などの系ごとに1つにまとめ、閉じておく（縦を短く）。中は1行ずつ（押すと詳しく）
+  const grp = new Map();
+  const rng = vs => { const a = vs[vs.length - 1].date || '', b = vs[0].date || ''; return esc(a === b ? a : a + ' to ' + b); };
+  for (const v of DATA.versions.slice(1)) { const g = v.version.split('.').slice(0, 2).join('.'); if (!grp.has(g)) grp.set(g, []); grp.get(g).push(v); }
+  $('#history').innerHTML = [...grp].map(([g, vs]) => `<details class="panel hist"><summary>v${esc(g)}.x (${vs.length} version${vs.length > 1 ? 's' : ''}, ${rng(vs)})</summary>${vs.map(v => `<div class="hv">${verHtml(v, false)}</div>`).join('')}</details>`).join('');
   $('#ver').innerHTML = DATA.versions.filter(v => v.patches).map(v => `<option value="${esc(v.version)}">v${esc(v.version)} (${esc(v.build ? 'build ' + v.build : v.date)})</option>`).join('');
   $('#ver').onchange = refresh;
   for (const [c, u8] of await idbAll()) { have.set(c, u8); saved++; }   // 前に覚えた純正ROM
