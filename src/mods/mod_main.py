@@ -21,6 +21,11 @@
      起動直後のフレームの進み方は純正と同じ（待たない）。
      起動時（$119A・$11E4・$1202）にゲームがメインRAM・共有RAMを消すので、リセットのたびに最初からやり直しになる
 """
+import os
+BOSSRUSH = os.environ.get('BOSSRUSH') == '1'          # BOSS RUSH モード（v0.5.0 から外した。後の版で戻す）。mod_menu と同じ
+EXTRA_AREAS = os.environ.get('EXTRA_AREAS') == '1'    # 場所を調整して足した復活地点（❶〜❹。10面 ❶ は残す）。mod_menu と同じ
+ND_FRAMES = 36000        # NO DEATH（#36）の1クレジットの時間（フレーム。10分）
+ND_LEFT = 0x103e10       # NO DEATH の残りフレーム.l（共有RAM。以前ボスラッシュの表を置いていた所）
 MB = 0x103f00           # メールボックス（共有RAM。サブ側は 0x203f00）
 # オフセット
 O_P1, O_SYS, O_UNLOCK, O_REQ, O_DONE, O_KIND, O_PAUSE, O_MODRUN = 0, 1, 2, 3, 4, 5, 6, 7
@@ -65,6 +70,8 @@ MB_PSHOT = $103f18
 MB_PSHON = $103f19
 MB_PEND  = $103f1a
 MB_INV   = $103f20
+ND_LEFT  = ${ND_LEFT:x}
+ND_FRAMES = {ND_FRAMES}
 RAMMAGIC = ${RAMMAGIC:x}
 MAGICVAL = ${MAGICVAL:x}
 LCNT    = ${LCNT:x}
@@ -243,11 +250,11 @@ ApplyStart:                     ; メニュー確定直後: 改造プレイ開�
         tst.b   MB_MODE.l
         beq.s   as_1
         st      $103f22.l
-as_1:
+as_1:   move.l  #ND_FRAMES,ND_LEFT.l   ; NO DEATH（#36）の残り時間
         lea     $101000.l,a0
         bsr.s   sk_set
         lea     $101080.l,a0
-sk_set: cmpi.b  #1,MB_MODE.l    ; 残機はディップスイッチどおり。キューブラッシュはそれに +4（遊んでいない側＝残機0 には足さない）
+sk_set: cmpi.b  #2,MB_MODE.l    ; 残機はディップスイッチどおり。キューブラッシュはそれに +4（遊んでいない側＝残機0 には足さない）
         bne.s   sk_sr
         tst.b   $50(a0)
         beq.s   sk_sr
@@ -400,10 +407,12 @@ pb_h1:  rts                     ; （HUNTER TIME は廃止。装備コマンド�
 """)
 # ---- キューブラッシュ（改造プレイ）の点数はハイスコア・ランキングに入れない ----
 chunk('HiRank', """
-CkCR:   tst.b   MB_RUN.l        ; 戻り: eq = キューブラッシュの改造プレイ
+CkCR:   tst.b   MB_RUN.l        ; 戻り: eq = キューブラッシュか NO DEATH（#36）の改造プレイ
         beq.s   ck_n
         cmpi.b  #1,MB_MODE.l
-        rts
+        beq.s   ck_r
+        cmpi.b  #2,MB_MODE.l
+ck_r:   rts
 ck_n:   cmpi.b  #1,MB_RUN.l
         rts
 ; 0x197e の cmp.l $40058.l,d7 の置き換え（点数加算後のハイスコア更新）: キューブラッシュなら更新しない（C=1）
@@ -451,9 +460,7 @@ EvPtr:  tst.b   MB_RUN.l
         move.l  $1038de.l,d0
         lsr.l   #8,d0
         cmpi.w  #$780,d0
-        bcs.s   ev_sc
-        cmpi.w  #$2500,d0       ; 脱出（❹）から: ゲームの索引は $2600 から先が無く、表の外を指して止まる（#21）
-        bcs.s   ev_st
+EVESC
 ev_sc:  movea.l #$252d4,a6
 ev_lp:  cmp.w   (a6),d0
         bls.s   ev_st
@@ -462,6 +469,9 @@ ev_lp:  cmp.w   (a6),d0
 ev_st:  move.l  a6,$42e00.l
         rts
 """)
+CHUNKS[-1] = (CHUNKS[-1][0], CHUNKS[-1][1].replace('EVESC', """        bcs.s   ev_sc
+        cmpi.w  #$2500,d0       ; 脱出（❹）から: ゲームの索引は $2600 から先が無く、表の外を指して止まる（#21）
+        bcs.s   ev_st""" if EXTRA_AREAS else """        bcc.s   ev_st"""), CHUNKS[-1][2])
 
 # 改造プレイの START 表示（状態2の2フレーム目から）: 元の処理の後で、パレットの出来事の処理（$E318。純正はプレイ中だけ）も回す。
 # 面の途中から始めると、開始位置までのパレットの出来事がプレイの最初のフレームでまとめて実行されるので、START 表示の間は
@@ -598,7 +608,7 @@ ch_r:   rts
 chunk('NextStg', """
 NextStg: tst.b  MB_RUN.l
         beq.s   ns_n
-        cmpi.b  #2,MB_MODE.l
+        cmpi.b  #3,MB_MODE.l
         bne.s   ns_n
         move.l  d0,-(sp)
         moveq   #0,d0
@@ -627,14 +637,23 @@ chunk('NextPos', """
 NextPos: jsr    $695c.w
         tst.b   MB_RUN.l
         beq.s   np_r
-        cmpi.b  #2,MB_MODE.l
+        cmpi.b  #3,MB_MODE.l
         bne.s   np_r
         jmp     $4ce8.w
 np_r:   rts
 """)
 # 装備コマンドの残り回数（無敵中は無制限 $ff として返す）
 chunk('CmdCnt', """
-CmdCnt: tst.b   MB_INV.l        ; d1 = 残り回数（$ff=無制限。無敵中も無制限）。0 でなければ装備コマンドを使う
+CmdCnt: cmpi.b  #1,MB_MODE.l    ; NO DEATH（#36）: クレジットがあれば、START は延長（クレジットを1つ使って +10分）
+        bne.s   cc_i
+        move.b  $40034.l,d1
+        beq.s   cc_i            ; クレジットが無ければ、いつもの装備コマンド
+        moveq   #1,d7
+        jsr     $2a76.w         ; クレジット −1（純正の START と同じ処理）
+        addi.l  #ND_FRAMES,ND_LEFT.l
+        moveq   #0,d1           ; 装備コマンドは使わない
+        rts
+cc_i:   tst.b   MB_INV.l        ; d1 = 残り回数（$ff=無制限。無敵中も無制限）。0 でなければ装備コマンドを使う
         beq.s   cc_n
         moveq   #-1,d1
         bra.s   cc_s
@@ -659,10 +678,16 @@ ph_cl:  move.w  (a0)+,(a1)+
         move.w  (a0),$8027c.l
 ph_nc:  jsr     PauseChk.l
         subq.b  #1,d0
-        beq.s   ph_rts          ; 1: ポーズ中
+        beq.w   ph_rts          ; 1: ポーズ中
         bcs.s   ph_np
-        jsr     Command.l       ; 2: 装備コマンド
-ph_np:
+        jsr     Command.l       ; 2: 装備コマンド（NO DEATH でクレジットがあれば延長）
+ph_np:  cmpi.b  #1,MB_MODE.l    ; NO DEATH（#36）: プレイ中のフレームを数える（ポーズ中は数えない）。0 になったらその場でゲームオーバー
+        bne.s   ph_nd
+        subq.l  #1,ND_LEFT.l
+        bhi.s   ph_nd
+        clr.l   ND_LEFT.l
+        move.b  #3,MB_PAUS.l    ; ポーズの GAME OVER と同じ（次のフレームの PauseChk）
+ph_nd:
         tst.b   MB_PEND.l
         beq.s   ph_go
         movem.l d0-d7/a0-a6,-(a7)
@@ -683,15 +708,18 @@ ph_g:   move.b  $103f3c.l,d0    ; 開始時のゲージ（1周目1面A は 0=純
         beq.s   ph_x
         move.b  d0,$6a(a2)
 ph_x:   movem.l (a7)+,d0-d7/a0-a6
-        move.b  MB_PEND.l,d0    ; 10面の脱出から始めた（StageHook）: ゲームの処理の後で、ラスボスを倒したときと同じ色（$E926:
+ESCPAL
+ph_go:  jmp     $3a24.w
+ph_rts: rts
+""")
+
+ESCPAL_SRC = """        move.b  MB_PEND.l,d0    ; 10面の脱出から始めた（StageHook）: ゲームの処理の後で、ラスボスを倒したときと同じ色（$E926:
         andi.b  #$38,d0         ; パレット $31 ← $33740。純正は $1FFBA）を入れる。開始位置までのパレットの出来事が
         beq.s   ph_go           ; プレイの2フレーム目にまとめて入る（$E428）ので、プレイの最初の7フレームのあいだ入れ直す（#21）
         subi.b  #8,MB_PEND.l
         jsr     $3a24.w
-        jmp     $e926.l
-ph_go:  jmp     $3a24.w
-ph_rts: rts
-""")
+        jmp     $e926.l""" if EXTRA_AREAS else ''
+CHUNKS[-1] = (CHUNKS[-1][0], CHUNKS[-1][1].replace('ESCPAL', ESCPAL_SRC), CHUNKS[-1][2])
 
 # ---- 装備コマンド: サブCPUが「目標の装備にそろえるのに各枠を何回使うか」を計算済み(MB+$24〜 / 2P は +$2c〜) ----
 # 枠 1=SPEED 2=MISSILE 3=DOUBLE 4=LASER 5=OPTION 6=SHIELD、+6 = スピードを2段階へ下げる印
@@ -776,12 +804,18 @@ StageHook:
         move.w  #$310,$101052.l
         ori.b   #1,$101063.l
         bra.s   sh_go
-sh_m:   cmpi.b  #9,$101051.l    ; 10面のラスボスの後（脱出 ❹）から始める・再開する: ラスボスを倒したときに入る色（#21）を
+sh_m:
+SHESC
+SHBOSS
+sh_go:  jmp     $3790.w
+""")
+SHESC_SRC = """        cmpi.b  #9,$101051.l    ; 10面のラスボスの後（脱出 ❹）から始める・再開する: ラスボスを倒したときに入る色（#21）を
         bne.s   sh_nx           ; プレイの最初のフレームで入れる（PlayHook。パレットの出来事の処理より後に）
         cmpi.w  #$2500,$101052.l
         bcs.s   sh_nx
         ori.b   #$38,MB_PEND.l  ; bit3〜5 = 残りフレーム数×8（7フレーム）
-sh_nx:  cmpi.b  #2,MB_MODE.l
+sh_nx:""" if EXTRA_AREAS else ''
+SHBOSS_SRC = """        cmpi.b  #3,MB_MODE.l
         bne.s   sh_go
 sh_boss:                        ; ボスラッシュ (開始位置はサブが用意するボスラッシュ用エリア表で決まる)
         moveq   #0,d0
@@ -797,9 +831,9 @@ sh_b1:  cmp.b   $103f38.l,d0    ; 面が変わった回数を数え、一巡し�
         addq.b  #1,$103f39.l
         cmpi.b  #10,$103f39.l   ; 開始面 + 8面 → 開始面に戻った(10回目)
         bcs.s   sh_go
-        move.b  #3,$103f06.l    ; 一巡した → ポーズの「GAME OVER」と同じ処理をプレイ開始時に行わせる
-sh_go:  jmp     $3790.w
-""")
+        move.b  #3,$103f06.l    ; 一巡した → ポーズの「GAME OVER」と同じ処理をプレイ開始時に行わせる""" if BOSSRUSH else ''
+CHUNKS[-1] = (CHUNKS[-1][0], CHUNKS[-1][1].replace('SHESC', SHESC_SRC).replace('SHBOSS', SHBOSS_SRC), CHUNKS[-1][2])
+if not (SHESC_SRC or SHBOSS_SRC): CHUNKS[-1] = (CHUNKS[-1][0], CHUNKS[-1][1].replace('        bra.s   sh_go\nsh_m:', 'sh_m:'), CHUNKS[-1][2])
 
 # ---- エリア開始表の差し替え (0x4cfc の lea $54fe,a6 を置換) : 改造プレイ時のみ独自表 ----
 chunk('AreaTbl', """
@@ -836,7 +870,6 @@ ST10 = [(0, 0x20000), (0x11c00, 0x20000), (0x21c02, 0x20000), (0x35bdd, 0x20000)
 #   BOSS RUSH = ボス2〜6の手前
 for _kv in os.environ.get('ST10X', '').split(','):      # テスト用: ST10X="2=24000,3=38000"
     if _kv: _i, _v = _kv.split('='); ST10[int(_i)] = (int(_v, 16), ST10[int(_i)][1])
-EXTRA_AREAS = os.environ.get('EXTRA_AREAS') == '1'   # 場所を調整して足した復活地点（❶〜❹）。次の版では外す（10面 ❶ は残す）。mod_menu と同じ
 ST10_ROW = [0, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17] if EXTRA_AREAS else [0, 7, 8, 9, 10, 11, 12, 13, 15]
 BR_ROW = [2, 3, 4, 5, 6]
 # 9面 = 開始 / 0x58000(キューブ地帯の手前。キューブラッシュもここから) / 0x5c000(ボス手前)
@@ -985,6 +1018,9 @@ def boss_area_blob(base=0x103f40):
     assert len(b) <= 0xc0, len(b)
     return b + bytes(0xc0 - len(b))
 
+BR_CHUNKS = ('BossSet', 'BossProg', 'NextStg', 'NextPos')   # BOSS RUSH モードだけで使う
+if not BOSSRUSH: CHUNKS[:] = [c for c in CHUNKS if c[0] not in BR_CHUNKS]
+
 LOCK_SUSPEND = True        # 解除・ロックのコマンドを一時停止（True の間は常に解除状態）。戻すときは False
 RAMBLOB = None             # 共有RAMに置くコード [(メインの番地, bytes)]。apply() が作り、mod_sub がサブROMに入れて起動時に写す
 
@@ -1014,7 +1050,7 @@ def apply(rom):
     lr = '\n'.join(l for l in (mod_edit.SRC_LR % (0, mod_edit.EB + mod_edit.O_MAX)).splitlines() if not l.strip().startswith('org'))
     chunks.append(('EdLR', lr, {'rom', 'shr', 'mrm'}))
     byname = {c[0]: c for c in chunks}
-    chunks = [(n, s, w | {'stream'}) for n, s, w in (byname[k] for k in COLD)] + [c for c in chunks if c[0] not in COLD]
+    chunks = [(n, s, w | {'stream'}) for n, s, w in (byname[k] for k in COLD if k in byname)] + [c for c in chunks if c[0] not in COLD]
     place, out, lab, size, left = mainpack.layout(chunks, REGIONS, STREAM, CONSTS, data=('StateTbl', 'GreyPal', 'BossProg'))
     global RAMBLOB
     kinds = {r[0]: r[3] for r in REGIONS}
@@ -1061,8 +1097,10 @@ def apply(rom):
     rom.put('main', 0x1932, lab['ScoreHk'].to_bytes(4, 'big'), 'score-1p', expect=bytes.fromhex('0000180a'))
     rom.put('main', 0x1954, lab['ScoreHk'].to_bytes(4, 'big'), 'score-2p', expect=bytes.fromhex('0000180a'))
     rom.put('main', 0x1d24, J('CredHook'), 'credit-hide', expect=bytes.fromhex('4eb90000326e'))
-    rom.put('main', 0x692a, J('NextPos'), 'bossrush-pos', expect=bytes.fromhex('4eb90000695c'))
-    rom.put('main', 0x3c7a, J('NextStg'), 'bossrush-next', expect=bytes.fromhex('427900101052'))
+    if BOSSRUSH:
+        rom.put('main', 0x692a, J('NextPos'), 'bossrush-pos', expect=bytes.fromhex('4eb90000695c'))
+    if BOSSRUSH:
+        rom.put('main', 0x3c7a, J('NextStg'), 'bossrush-next', expect=bytes.fromhex('427900101052'))
     # RAM のコードは、メインが呼ぶ前に必ず写してあること（StubIn・LoadW は ROM）
     for k in ('StubIn', 'LoadW'): assert all(kinds.get(r, 'rom') == 'rom' for r in place[k]), k
     rom.free_main = [FILLER]                              # ROM 合計の微調整（起動画面の文字列の後ろと、ROM の最後の16バイト）

@@ -52,7 +52,7 @@ STAGE_LABELS = ['STAGE   %d' % i for i in range(1, 10)] + ['STAGE  10', 'EX STAG
 ROW_ORDER = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 10]
 ITEMS = [
     ('INVINCIBLE', 1, 0, 1, 0x20, ['OFF', 'ON'], 0),   # 一時的な項目（無敵）
-    ('MODE',      1, 0, 2 if BOSSRUSH else 1, 0x0b, ['NORMAL', 'CUBE RUSH', 'BOSS RUSH'][:3 if BOSSRUSH else 2], 0),
+    ('MODE',      1, 0, 3 if BOSSRUSH else 2, 0x0b, ['NORMAL', 'NO DEATH', 'CUBE RUSH', 'BOSS RUSH'][:4 if BOSSRUSH else 3], 0),   # 0=NORMAL 1=NO DEATH(#36) 2=CUBE RUSH 3=BOSS RUSH
     ('LOOP',      0, 1, 99, 0x09, None, 1),
 ] + [(STAGE_LABELS[i], 3, i + 1, AREAS[i], 0x08, None, 0) for i in ROW_ORDER] + [
     ('CUBE HEIGHT', 1, 0, 16, 0x35, ['RANDOM'] + [str(i) for i in range(1, 17)], 0),   # キューブラッシュの並び: 3つとも RANDOM = 純正のまま
@@ -208,6 +208,7 @@ def build_data(base):
     put('PS_T', b'PAUSE\0')
     put('RK_T', b'RANK>\0')
     put('PO_X', b'X>\0')
+    put('ND_T', b'TIME\0')   # NO DEATH の残り時間（#36）
     put('PO_Y', b'Y>\0')
     put('LG_T', b'LAG>\0')
     put('CH_C', b'CUBE>\0')
@@ -481,7 +482,13 @@ vc_r:   rts
 ; ---- CUBE HEIGHT/SHIFT/TYPE の行（d7=項目番号）をキューブラッシュ以外で飛ばす: ne=飛ばす（d3 を使う）----
 CubeSkip:
         moveq   #0,d3
+        tst.b   d7              ; INVINCIBLE の行: NO DEATH では選べない（いつも無敵）
+        bne.s   ck_c
         cmpi.b  #1,$203f0b.l
+        bne.s   ck_x
+        moveq   #1,d3
+        bra.s   ck_x
+ck_c:   cmpi.b  #2,$203f0b.l
         beq.s   ck_x
         cmpi.b  #CUBE0,d7
         bcs.s   ck_x
@@ -544,10 +551,10 @@ dg_lp:  cmp.b   6(a5),d6
 ;   CUBE RUSH = 全部 / BOSS RUSH = EX STAGE の行全部と、面1〜10の行の B 以降(BOSS RUSH の行はそのまま)
         move.b  5(a5),d0        ; この行の面番号(1〜10, 11=EX, 13=BOSS RUSH)
         move.b  $203f0a.l,d4    ; 選択中のエリア
-        move.b  $203f0b.l,d5    ; MODE
-        cmpi.b  #1,d5
-        beq.s   dg_dis
+        move.b  $203f0b.l,d5    ; MODE（0=NORMAL 1=NO DEATH 2=CUBE RUSH 3=BOSS RUSH）
         cmpi.b  #2,d5
+        beq.s   dg_dis
+        cmpi.b  #3,d5
         bne.s   dg_en
         cmpi.b  #11,d0
         beq.s   dg_dis
@@ -662,7 +669,7 @@ mi_ah:  move.b  (a0),(a1)+
 ; ---- キューブラッシュ中の表示: 右上 行3 に「H nn S x T nn」（実際に出ている並び）----
 ; メインが1個目の瞬間のカウンタを $203e3a に置く。それを H/S/T に割り出す（$203e3c = 割り出し済みの値）
 CubeHud:
-        cmpi.b  #1,$203f0b.l    ; MODE = CUBE RUSH のときだけ
+        cmpi.b  #2,$203f0b.l    ; MODE = CUBE RUSH のときだけ
         bne.w   ch_rts
         move.w  $203e3a.l,d0
         cmp.w   $203e3c.l,d0
@@ -1052,12 +1059,16 @@ mf_sv:  move.b  (a0)+,(a1)+
         moveq   #7,d7
 mf_sv2: move.b  (a0)+,(a1)+
         dbf     d7,mf_sv2
-        cmpi.b  #1,$203f0b.l     ; CUBE HEIGHT/SHIFT/TYPE はキューブラッシュだけ（ほかは RANDOM = 純正のまま。控えた値はそのまま）
+        cmpi.b  #2,$203f0b.l     ; CUBE HEIGHT/SHIFT/TYPE はキューブラッシュだけ（ほかは RANDOM = 純正のまま。控えた値はそのまま）
         beq.s   mf_cr
         clr.b   $203f35.l
         clr.w   $203f36.l
 mf_cr:
-        cmpi.b  #2,$203f0b.l     ; ボスラッシュ: 面1〜10は常にエリアA、EX STAGE は使えないので面1
+        cmpi.b  #1,$203f0b.l     ; NO DEATH（#36）: いつも無敵（控えた INVINCIBLE はそのまま）
+        bne.s   mf_ndz
+        move.b  #1,$203f20.l
+mf_ndz:
+        cmpi.b  #3,$203f0b.l     ; ボスラッシュ: 面1〜10は常にエリアA、EX STAGE は使えないので面1
         bne.s   mf_gb
         cmpi.b  #11,$203f08.l
         bne.s   mf_gb1
@@ -1065,7 +1076,7 @@ mf_cr:
 mf_gb1: cmpi.b  #10,$203f08.l
         bhi.s   mf_gb
         move.b  #1,$203f0a.l
-mf_gb:  cmpi.b  #1,$203f0b.l     ; キューブラッシュ = 9面 エリア2(独自開始点)
+mf_gb:  cmpi.b  #2,$203f0b.l     ; キューブラッシュ = 9面 エリア2(独自開始点)
         bne.w   mf_g1
         move.b  #9,$203f08.l
         move.b  #2,$203f0a.l
@@ -1188,7 +1199,7 @@ CubeStick:                      ; くっついた印($26)は最後に立てる�
         bne.s   cst_x
         tst.b   MBS_RUN.l
         beq.s   cst_r
-        cmpi.b  #1,$203f0b.l
+        cmpi.b  #2,$203f0b.l
         bne.s   cst_r
         movem.l d0/a1-a2,-(a7)
         lea     CS_PTS.l,a1
@@ -1566,6 +1577,44 @@ ph_d:   move.b  d7,(a0)+
         jmp     PutStr.l
 po_x:   rts
 
+; ---- NO DEATH（#36）: 残り30秒から、段4・桁27〜33 に「TIME 29」を出してカウントダウン（残りはメインが ND_LEFT $103e10 で数える）
+V_NDL   = $103733          ; 表示しているか（30秒より多くなったら消す）
+NdDisp: tst.b   MBS_RUN.l
+        beq.w   nd_q
+        cmpi.b  #1,$203f0b.l
+        bne.w   nd_q
+        cmpi.b  #2,TOPSTATE.l
+        bne.w   nd_q
+        move.w  $20101e.l,d0    ; 面が始まってから（fr と同じ判定）
+        or.w    $20109e.l,d0
+        beq.w   nd_q
+        move.l  $203e10.l,d5
+        cmpi.l  #1800,d5
+        bhi.s   nd_off
+        move.w  FRAMECNT.l,d0   ; 4フレームに1回（STAGE=1・RANK=2・POS=3 とずらす）
+        andi.w  #3,d0
+        bne.w   nd_q
+        move.b  #1,V_NDL.l
+        lea     ND_T.l,a0
+        move.w  #27,d0
+        move.w  #4,d1
+        move.b  #ATTRLAB,d2
+        jsr     PutStr.l
+        addi.l  #59,d5          ; 秒（切り上げ。0 になった瞬間にゲームオーバー）
+        divu    #60,d5
+        move.w  #32,d0
+        move.w  #4,d1
+        moveq   #0,d2
+        jmp     PutDec.l
+nd_off: tst.b   V_NDL.l
+        beq.s   nd_q
+        clr.b   V_NDL.l
+        move.w  #27,d0
+        move.w  #4,d1
+        moveq   #6,d7
+        jmp     ClrFld.l
+nd_q:   rts
+
 ; ---- CUBE LINE（キューブラッシュ・ポーズで切り替え）: V = 縦（反応する位置）/ H = 横（高さ）
 ;      値 0=OFF 1=粗い点線 2=細かい点線(縦)・線(横) 3=端だけ（縦は上下の端、横は左右の端）
 ;      描いた組み合わせを覚えておき、変わったとき・ゲームに消されたときだけ描き直す（毎回描くとサブの処理が重くなる）
@@ -1573,7 +1622,7 @@ V_LNL   = $103732               ; 描いてある組み合わせ+1（0 = 何も�
 LNROW0  = 5                     ; 縦線の段 5〜27（スコア・ランク・位置の段とゲージの段は避ける）
 LNROW1  = 27
 CubeLine:
-        cmpi.b  #1,$203f0b.l
+        cmpi.b  #2,$203f0b.l
         bne.w   ln_r
         cmpi.b  #1,MBS_PAUS.l   ; ポーズ中は描かない（ポーズの窓と重なるので）
         beq.w   ln_r
@@ -1744,7 +1793,7 @@ PLine:  move.w  #PX+1,d0
 
 ; d6 = 項目の数（キューブラッシュは11、ほかは6）
 PCnt6:  moveq   #11,d6
-        cmpi.b  #1,$203f0b.l
+        cmpi.b  #2,$203f0b.l
         beq.s   pc6_r
         moveq   #6,d6
 pc6_r:  rts
@@ -1829,18 +1878,22 @@ pf_run: move.b  MBS_P1.l,d0
         bsr.w   PCnt6
         subq.b  #1,d6
         move.b  d6,V_PSEL.l
-        bra.s   pf_rd
+        bra.w   pf_rd
 pf_dn:  btst    #3,d1           ; 下
         beq.s   pf_lr
         addq.b  #1,V_PSEL.l
         bsr.w   PCnt6
         cmp.b   V_PSEL.l,d6
-        bhi.s   pf_rd
+        bhi.w   pf_rd
         clr.b   V_PSEL.l
-        bra.s   pf_rd
+        bra.w   pf_rd
 pf_lr:  moveq   #0,d0           ; ON/OFF のある行（INVINCIBLE・RANK DISP・CUBE INFO）: 左右・ショットで切り替え
         move.b  V_PSEL.l,d0
-        mulu    #16,d0
+        cmpi.b  #2,d0           ; INVINCIBLE の行は NO DEATH では変えられない（いつも無敵）
+        bne.s   pf_l2
+        cmpi.b  #1,$203f0b.l
+        beq.w   pf_nm
+pf_l2:  mulu    #16,d0
         lea     PTAB.l,a0
         move.l  12(a0,d0.w),d3  ; 値の表
         move.l  8(a0,d0.w),d0
@@ -1867,7 +1920,8 @@ pf_up:  addq.b  #1,d2
         bcs.s   pf_st
         moveq   #0,d2
 pf_st:  move.b  d2,(a0)
-pf_sv:
+pf_sv:  cmpi.b  #1,$203f0b.l    ; NO DEATH の無敵はスタートメニューの前回値に残さない
+        beq.w   pf_rd
         move.b  MBS_INV.l,V_LINV.l
 pf_rd:  movem.l d1/d5,-(a7)
         jsr     PDraw.l

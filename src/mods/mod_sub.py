@@ -94,7 +94,7 @@ sb_sc:  cmpi.b  #9,d0
 sb_s9:  mulu    #192,d0
         lea     AREABLOB.l,a0
         adda.l  d0,a0
-        cmpi.b  #2,$203f0b.l
+        cmpi.b  #3,$203f0b.l
         bne.s   sb_a0
         lea     BOSSBLOB.l,a0
 sb_a0:
@@ -125,7 +125,7 @@ sb_d1:  move.l  (a0)+,(a1)+
         dbf     d7,sb_d1
 sb_d2:
         lea     EXTN.l,a0               ; 10面の独自エリア表 → $103e40 (ボスラッシュ時はボス1直前から)
-        cmpi.b  #2,$203f0b.l
+        cmpi.b  #3,$203f0b.l
         bne.s   sb_e0
         lea     EXTB.l,a0
 sb_e0:  lea     $203e40.l,a1
@@ -145,11 +145,7 @@ sb_c1:  mulu    #14,d0
         moveq   #6,d7
 sb_c2:  move.w  (a0)+,(a1)+
         dbf     d7,sb_c2
-        lea     BOSSTBL.l,a0            ; ボスラッシュ用: 面ごとのボス接近位置 → $103e10
-        lea     $203e10.l,a1
-        moveq   #7,d7
-sb_c3:  move.l  (a0)+,(a1)+
-        dbf     d7,sb_c3
+        ; （$103e10〜 は以前ボスの表を写していたが、どこも読まないのでやめた。いまは NO DEATH の残り時間 #36）
 sb_skip:
         jsr     Frame.l
         movem.l (a7)+,d0-d7/a0-a6
@@ -173,7 +169,7 @@ fr_lp:  move.l  (a0)+,(a1)+
         beq.s   fe_set
         tst.l   $2038de.l
         beq.s   fe_set
-        cmpi.b  #1,$203f0b.l
+        cmpi.b  #2,$203f0b.l
         bne.s   fe_set
         tst.b   $203f0c.l
         beq.s   fe_off
@@ -191,7 +187,7 @@ fe_set: move.b  d1,$203ed1.l
         jsr     BrSkip.l
         tst.b   MBS_RUN.l           ; キューブラッシュでは残機が増えない（次に増える点数を 0 = もう増えない にしておく）
         beq.s   fe_x
-        cmpi.b  #1,$203f0b.l
+        cmpi.b  #2,$203f0b.l
         bne.s   fe_x
         clr.l   $201058.l
         jsr     CrEnd.l
@@ -209,7 +205,7 @@ fe_x:   moveq   #0,d1               ; CUBE COLOR が有効か → $203ed4（メ�
         beq.s   fc_s
         tst.l   $2038de.l
         beq.s   fc_s
-        cmpi.b  #1,$203f0b.l
+        cmpi.b  #2,$203f0b.l
         bne.s   fc_s
         move.b  $203f34.l,d1
 fc_s:   move.b  d1,V_CCW.l
@@ -249,6 +245,7 @@ fr_rk:  move.b  #1,V_RKL.l
         jsr     RankDisp.l
 fr_nr:  jsr     StChk.l
         jsr     PosChk.l
+        jsr     NdDisp.l
         cmpi.b  #1,MBS_PAUS.l
         bne.w   fr_np
         jmp     PauseFrame.l
@@ -302,7 +299,7 @@ BrSkip: cmpi.b  #2,TOPSTATE.l
         bne.s   bk_r
         tst.b   MBS_RUN.l
         beq.s   bk_r
-        cmpi.b  #2,$203f0b.l
+        cmpi.b  #3,$203f0b.l
         bne.s   bk_r
         moveq   #0,d0
         move.b  $201051.l,d0
