@@ -3,7 +3,7 @@ name: 代理の書き込み
 # Claude（作業用アカウント）が Issue に書くとき、名前を出さずに github-actions[bot] として書く。
 # REST で dispatch する: POST /repos/hknroms/gradius3/actions/workflows/bot-post.yml/dispatches
 #   { "ref": "main", "inputs": { "mode": "comment", "issue": "12", "body": "..." } }
-# mode: comment（コメント）/ create（Issue を作る。title・labels を使う）/ edit（本文を置き換える）/ edit-comment（issue にコメントの ID を入れ、そのコメントを置き換える。コマンドは実行しない）
+# mode: comment（コメント）/ create（Issue を作る。title・labels を使う）/ edit（本文を置き換える。title があれば題名も）/ edit-comment（issue にコメントの ID を入れ、そのコメントを置き換える。コマンドは実行しない）
 # コメントに共同作業ボットのコマンド（/claim /items /fixed など）があれば、その場で実行する（担当者名は「ai」、管理者として扱う）
 
 on:
@@ -52,5 +52,5 @@ jobs:
             } else if (e.MODE === 'edit-comment') {
               await github.rest.issues.updateComment({ owner, repo, comment_id: +e.ISSUE, body: e.BODY });
             } else if (e.MODE === 'edit') {
-              await github.rest.issues.update({ owner, repo, issue_number: +e.ISSUE, body: e.BODY });
+              await github.rest.issues.update({ owner, repo, issue_number: +e.ISSUE, body: e.BODY, ...(e.TITLE ? { title: e.TITLE } : {}) });
             } else core.setFailed('mode が違います: ' + e.MODE);
