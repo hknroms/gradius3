@@ -39,7 +39,7 @@ jobs:
               const r = await github.rest.issues.createComment({ owner, repo, issue_number: +e.ISSUE, body: e.BODY });
               core.info(r.data.html_url);
               // コマンドがあれば共同作業ボットをその場で動かす（GITHUB_TOKEN の書き込みでは別のワークフローが起動しないため）
-              if (/^\s*\/(claim|check|submit|done|human|release|items|type|accept|reject|fixed|wontfix)\b/im.test(e.BODY)) {
+              if (/^\s*\/(claim|check|submit|done|human|release|items|type|accept|reject|fixed|wontfix|later|now)\b/im.test(e.BODY)) {
                 const issue = (await github.rest.issues.get({ owner, repo, issue_number: +e.ISSUE })).data;
                 const comment = { ...r.data, user: { login: 'ai', type: 'User' }, author_association: 'COLLABORATOR', synthetic: true };
                 const bot = require(process.env.GITHUB_WORKSPACE + '/.github/scripts/task-bot.js');
