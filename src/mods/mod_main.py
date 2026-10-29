@@ -310,6 +310,7 @@ PauseChk:                       ; 戻り d0: 0=通常 1=止める 2=装備コマ
         moveq   #1,d0
         rts
 pc_res: clr.b   MB_PAUS.l
+        jsr     EqApply.l       ; ポーズで装備を変えていたら、やり直す
         moveq   #0,d0
         rts
 pc_chk: lea     $103f21.l,a0    ; 1P START: 短く押す=装備コマンド / 約1秒押し続ける=ポーズ
@@ -331,6 +332,52 @@ pc_up:  move.b  (a0),d1
         rts
 pc_no:  moveq   #0,d0
         rts
+""")
+
+# ---- ポーズで装備を変えた（無敵のとき。サブが EQ_REQ $103e14 を立て、+1〜+5 に SPEED MISSILE DOUBLE/LASER OPTION SHIELD を置く）----
+# いったん何もない状態（死んで出直したときと同じ）にしてから、装備コマンドと同じ Use で付け直す（減らすこともできる）
+chunk('EqApply', """
+EqApply: tst.b  $103e14.l
+        beq.w   ea_r
+        clr.b   $103e14.l
+        movem.l d0-d7/a0-a6,-(a7)
+        lea     $101100.l,a0    ; オプション（$50 ずつ4つ）を消す
+        moveq   #$4f,d0
+ea_c1:  clr.l   (a0)+
+        dbf     d0,ea_c1
+        lea     $101f60.l,a0    ; シールドを消す
+        moveq   #$f,d0
+ea_c2:  clr.l   (a0)+
+        dbf     d0,ea_c2
+        lea     $101000.l,a0
+        clr.w   $68(a0)         ; 武器・スピード（出直したときと同じ。$7732）
+        clr.b   $6b(a0)
+        clr.w   $6c(a0)
+        move.w  #$100,$2c(a0)
+        jsr     $89b0.l         ; パワーアップの枠をタイプの初期値に（$896c の途中から。エディットの表は書かない）
+        lea     $101000.l,a2
+        lea     $101f60.l,a3
+        lea     $103e15.l,a4
+        moveq   #1,d3           ; SPEED
+        move.b  (a4)+,d4
+        jsr     Use.l
+        moveq   #2,d3           ; MISSILE
+        move.b  (a4)+,d4
+        jsr     Use.l
+        moveq   #2,d3           ; DOUBLE(1→枠3) / LASER(2→枠4)
+        move.b  (a4)+,d4
+        beq.s   ea_o
+        add.b   d4,d3
+        moveq   #1,d4
+        jsr     Use.l
+ea_o:   moveq   #5,d3           ; OPTION
+        move.b  (a4)+,d4
+        jsr     Use.l
+        moveq   #6,d3           ; SHIELD
+        move.b  (a4)+,d4
+        jsr     Use.l
+        movem.l (a7)+,d0-d7/a0-a6
+ea_r:   rts
 """)
 
 # ---- 隠しメニューの解除/ロック (毎フレーム, d0=P1 正論理) ---- （LOCK_SUSPEND の間は入れない）

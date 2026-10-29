@@ -16,3 +16,9 @@ G3RUN=$L/g3run.lua SEQ="$B" HOLDK="1495:U:20,1500:START:5,3500:START:70" POKE="$
 ```
 
 MODE の値は v0.5.1 から 0=NORMAL 1=NO DEATH 2=CUBE RUSH 3=BOSS RUSH（以前のスクリプトの `103f0b:1`＝キューブラッシュは `:2` に読み替える）。
+
+## ポーズの装備・MISS（無敵のとき）
+
+ポーズは START 長押し（`HOLDK=...,3400:START:70`）。項目の並び（NO DEATH・無敵）: CONTINUE GAME OVER INVINCIBLE RANK STAGE POS SPEED MISSILE DOUBLE/LASER OPTION SHIELD MISS（キューブラッシュならこの後に CUBE の5つ）。
+- 装備: `D` ×6 で SPEED、`R` で値を変える、`START` で再開 → `DUMPAT` で $101069（スピード）・$10106c（ダブル/レーザー）・$10106d（ミサイル）・$101100+$50n（オプション）・$101f60（シールド）を見る
+- MISS: `D` ×11 → `START`。NO DEATH は残機がそのまま、NORMAL（無敵）は1つ減る

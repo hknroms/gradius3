@@ -210,6 +210,14 @@ fe_x:   moveq   #0,d1               ; CUBE COLOR が有効か → $203ed4（メ�
         move.b  $203f34.l,d1
 fc_s:   move.b  d1,V_CCW.l
         jsr     CubeCol.l
+        tst.b   $203ed2.l           ; ポーズの MISS（キューブラッシュ以外）: 死んだら「無敵でも死ぬ」印を下ろす
+        beq.s   fr_mx
+        cmpi.b  #2,$203f0b.l
+        beq.s   fr_mx
+        cmpi.b  #4,$201001.l
+        bne.s   fr_mx
+        clr.b   $203ed2.l
+fr_mx:
         cmpi.b  #2,TOPSTATE.l
         beq.w   fr_ingame
         tst.b   MBS_REQ.l
@@ -246,6 +254,7 @@ fr_rk:  move.b  #1,V_RKL.l
 fr_nr:  jsr     StChk.l
         jsr     PosChk.l
         jsr     NdDisp.l
+        jsr     NdMsg.l
         cmpi.b  #1,MBS_PAUS.l
         bne.w   fr_np
         jmp     PauseFrame.l
@@ -402,7 +411,7 @@ cu_t:   subq.w  #1,d2
         rts
 """
 
-DATA_BASE = 0x39c00   # 0x39800 → 0x39c00（#30 でサブのコードが増えた。データの終わりは 0x3e2xx、0x3ffff まで空き）
+DATA_BASE = 0x3a000   # 0x39800 → 0x39c00（#30）→ 0x3a000（#36 でサブのコードが増えた）。データの終わりは 0x3e2xx、0x3ffff まで空き）
 WTYPE_BYTES = bytes([1,3,1, 3,1,4, 4,2,2, 2,4,3])   # TYPE A..D -> (missile, double, laser)
 
 def apply(rom):

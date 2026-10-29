@@ -209,6 +209,8 @@ def build_data(base):
     put('RK_T', b'RANK>\0')
     put('PO_X', b'X>\0')
     put('ND_T', b'TIME\0')   # NO DEATH の残り時間（#36）
+    put('ND_M1', b'PUSH START       > FULL POWER\0')   # NO DEATH の最初の START 表示の案内（'>' は ':'）
+    put('ND_M2', b'HOLD START 1 SEC > PAUSE MENU\0')
     put('PO_Y', b'Y>\0')
     put('LG_T', b'LAG>\0')
     put('CH_C', b'CUBE>\0')
@@ -254,6 +256,11 @@ def build_data(base):
     put('PS_U0', b'>CUBE HUNTER\0')
     put('PS_U1', b' CUBE HUNTER\0')
     put('PS_ON', b'ON \0')
+    # 無敵のときだけ出す: 装備（#36 の続き。再開のときにメインがやり直す）と MISS（自分で死ぬ）
+    for k, t in [('ES', 'SPEED'), ('EM', 'MISSILE'), ('ED', 'DOUBLE/LASER'), ('EO', 'OPTION'), ('EH', 'SHIELD'), ('X', 'MISS')]:
+        put('PS_%s0' % k, b'>' + t.encode() + b'\0'); put('PS_%s1' % k, b' ' + t.encode() + b'\0')
+    for i in range(6): put('EN_%d' % i, b'%d     \0' % i)
+    put('ED_1', b'DOUBLE\0'); put('ED_2', b'LASER \0'); put('ED_0', b'OFF   \0')
     put('PS_OFF', b'OFF\0')
     # ポーズの項目: 選択中の文字列.l 通常の文字列.l ON/OFF の場所.l(0=なし)
     put('PS_V0', b'>CUBE LINE V\0')
@@ -263,9 +270,14 @@ def build_data(base):
     put('LV_0', b'OFF  \0'); put('LV_1', b'ROUGH\0'); put('LV_2', b'FINE \0'); put('LV_3', b'EDGE \0'); put('LH_2', b'LINE \0')
     al(); lab['LVTAB'] = base + len(blob); blob.extend(struct.pack('>IIIII', 4, lab['LV_0'], lab['LV_1'], lab['LV_2'], lab['LV_3']))
     al(); lab['LHTAB'] = base + len(blob); blob.extend(struct.pack('>IIIII', 4, lab['LV_0'], lab['LV_1'], lab['LH_2'], lab['LV_3']))
+    al(); lab['EQSPD'] = base + len(blob); blob.extend(struct.pack('>I', 6) + b''.join(struct.pack('>I', lab['EN_%d' % i]) for i in range(6)))
+    al(); lab['EQOPT'] = base + len(blob); blob.extend(struct.pack('>I', 5) + b''.join(struct.pack('>I', lab['EN_%d' % i]) for i in range(5)))
+    al(); lab['EQDL'] = base + len(blob); blob.extend(struct.pack('>IIII', 3, lab['ED_0'], lab['ED_1'], lab['ED_2']))
     al(); lab['PTAB'] = base + len(blob)
     # ポーズの項目 16B: 選択中の文字列.l 通常の文字列.l 値の場所.l(0=なし) 値の表.l(0=ON/OFF, それ以外=[数.l, 文字列.l...])
-    for a, b, f, vt in [('PS_C0', 'PS_C1', 0, 0), ('PS_G0', 'PS_G1', 0, 0), ('PS_I0', 'PS_I1', 0x203f20, 0), ('PS_R0', 'PS_R1', 0x203f0e, 0), ('PS_S0', 'PS_S1', 0x2039c4, 0), ('PS_P0', 'PS_P1', 0x203f2b, 0), ('PS_Q0', 'PS_Q1', 0x203f0c, 0), ('PS_K0', 'PS_K1', 0x203f34, 0), ('PS_V0', 'PS_V1', 0x203f1c, 'LVTAB'), ('PS_H0', 'PS_H1', 0x203f3b, 'LHTAB'), ('PS_U0', 'PS_U1', 0x203f33, 0)]:
+    for a, b, f, vt in [('PS_C0', 'PS_C1', 0, 0), ('PS_G0', 'PS_G1', 0, 0), ('PS_I0', 'PS_I1', 0x203f20, 0), ('PS_R0', 'PS_R1', 0x203f0e, 0), ('PS_S0', 'PS_S1', 0x2039c4, 0), ('PS_P0', 'PS_P1', 0x203f2b, 0),
+                         ('PS_ES0', 'PS_ES1', 0x203e15, 'EQSPD'), ('PS_EM0', 'PS_EM1', 0x203e16, 0), ('PS_ED0', 'PS_ED1', 0x203e17, 'EQDL'),
+                         ('PS_EO0', 'PS_EO1', 0x203e18, 'EQOPT'), ('PS_EH0', 'PS_EH1', 0x203e19, 0), ('PS_X0', 'PS_X1', 0, 0), ('PS_Q0', 'PS_Q1', 0x203f0c, 0), ('PS_K0', 'PS_K1', 0x203f34, 0), ('PS_V0', 'PS_V1', 0x203f1c, 'LVTAB'), ('PS_H0', 'PS_H1', 0x203f3b, 'LHTAB'), ('PS_U0', 'PS_U1', 0x203f33, 0)]:
         blob.extend(struct.pack('>IIII', lab[a], lab[b], f, lab[vt] if vt else 0))
     # STAGE DISP のエリア: 面1〜10 × 12。本来のエリア（英字）だけ（❶〜❹ は使わない＝手前の英字のまま。2026-10-28 管理者）
     #   STLAB = 英字（残りは 0）、STPRG = その開始進行度（メニューの表 PROGTBL と同じ値）
@@ -1615,6 +1627,46 @@ nd_off: tst.b   V_NDL.l
         jmp     ClrFld.l
 nd_q:   rts
 
+; ---- NO DEATH（#36）: メニューから始めた最初の START 表示の間だけ、操作の案内を2行出す（この間は地形・背景が黒いので読みやすい #20）
+V_NDM   = $103734          ; 案内を出しているか
+NDMROW  = 19
+NdMsg:  tst.b   MBS_RUN.l
+        beq.s   nm_off
+        cmpi.b  #1,$203f0b.l
+        bne.s   nm_off
+        cmpi.b  #2,TOPSTATE.l
+        bne.s   nm_off
+        move.b  $203f1a.l,d0    ; 最初の START 表示: 面・エリアは反映済み（bit2 が下りた）で、その人の開始時の設定がまだ（bit0/1）
+        btst    #2,d0
+        bne.s   nm_off
+        move.b  $203f05.l,d1    ; 1P で始めた = bit0 / 2P = bit1（MB_KIND）
+        subq.b  #1,d1
+        btst    d1,d0
+        beq.s   nm_off
+        move.b  #1,V_NDM.l      ; 毎フレーム描く（START 表示の始めにゲームが文字の面を消すので）
+        lea     ND_M1.l,a0
+        move.w  #17,d0
+        move.w  #NDMROW,d1
+        moveq   #0,d2
+        jsr     PutStr.l
+        lea     ND_M2.l,a0
+        move.w  #17,d0
+        move.w  #NDMROW+2,d1
+        moveq   #0,d2
+        jmp     PutStr.l
+nm_off: tst.b   V_NDM.l
+        beq.s   nm_r
+        clr.b   V_NDM.l
+        move.w  #17,d0
+        move.w  #NDMROW,d1
+        moveq   #29,d7
+        jsr     ClrFld.l
+        move.w  #17,d0
+        move.w  #NDMROW+2,d1
+        moveq   #29,d7
+        jmp     ClrFld.l
+nm_r:   rts
+
 ; ---- CUBE LINE（キューブラッシュ・ポーズで切り替え）: V = 縦（反応する位置）/ H = 横（高さ）
 ;      値 0=OFF 1=粗い点線 2=細かい点線(縦)・線(横) 3=端だけ（縦は上下の端、横は左右の端）
 ;      描いた組み合わせを覚えておき、変わったとき・ゲームに消されたときだけ描き直す（毎回描くとサブの処理が重くなる）
@@ -1750,20 +1802,72 @@ V_PST   = $103450
 V_PSEL  = $103451
 V_PPIN  = $103452
 V_PSIN  = $103453
-V_PSAV  = $103800          ; 12行x21桁x2バイト = 504（〜0x1039f7。#30 で1行増やした）（ポーズの間だけ使う。プレイ中は元のプログラムが使っていない範囲）
+V_PSAV  = $103800          ; 12行x21桁x2バイト = 504（〜0x1039f7）（ポーズの間だけ使う。プレイ中は元のプログラムが使っていない範囲）。13行目からは保存せず、閉じるときに消す
+V_PMAP  = $103740          ; いま出している項目の PTAB の番号（最大20）
+V_PCNT  = $103754          ; 出している項目の数
+V_PY    = $103755          ; 窓の一番上の段（項目の数で上下に動かす）
 MBS_INV = $203f20          ; 無敵（メインの MB+$20）
 V_LINV  = $203ef0          ; スタートメニューの前回値の写し（MB+$20 に対応）
+EQ_REQ  = $203e14          ; 装備を変えた（再開のときにメインが装備をやり直す）。値は +1〜+5（SPEED MISSILE DOUBLE/LASER OPTION SHIELD）
 PX      = 26
-PY      = 14
 PW      = 21
-; ---- ポーズ窓: 保存/復元 (layer A, 行PY..PY+3, 桁PX..PX+PW-1) ----
+PI_EQ   = 6                ; PTAB の装備の項目の始め（6〜10 = 装備、11 = MISS）。12〜16 = キューブラッシュの項目
+PI_MISS = 11
+PI_CUBE = 12
+; ---- 出す項目の表を作る: いつもの6つ ＋ 無敵なら装備と MISS ＋ キューブラッシュならキューブの5つ。d6 = 数 ----
+PMap:   lea     V_PMAP.l,a0
+        moveq   #0,d0
+pm_b:   move.b  d0,(a0)+
+        addq.b  #1,d0
+        cmpi.b  #PI_EQ,d0
+        bcs.s   pm_b
+        tst.b   MBS_INV.l
+        beq.s   pm_c
+pm_e:   move.b  d0,(a0)+
+        addq.b  #1,d0
+        cmpi.b  #PI_CUBE,d0
+        bcs.s   pm_e
+pm_c:   cmpi.b  #2,$203f0b.l
+        bne.s   pm_x
+        moveq   #PI_CUBE,d0
+pm_k:   move.b  d0,(a0)+
+        addq.b  #1,d0
+        cmpi.b  #PI_CUBE+5,d0
+        bcs.s   pm_k
+pm_x:   move.l  a0,d6
+        subi.l  #V_PMAP,d6
+        move.b  d6,V_PCNT.l
+        moveq   #17,d0          ; 窓の位置: 項目が多いときは上へ（17 − (数+1)/2）
+        move.w  d6,d1
+        addq.w  #1,d1
+        lsr.w   #1,d1
+        sub.w   d1,d0
+        move.b  d0,V_PY.l
+        rts
+; d6 = 出している項目の数
+PCnt6:  moveq   #0,d6
+        move.b  V_PCNT.l,d6
+        rts
+; d0 = 選んでいる項目の PTAB の番号
+PSelIx: moveq   #0,d0
+        move.b  V_PSEL.l,d0
+        lea     V_PMAP.l,a0
+        move.b  0(a0,d0.w),d0
+        rts
+; d1 = 窓の一番上の段
+PYd1:   moveq   #0,d1
+        move.b  V_PY.l,d1
+        rts
+
+; ---- ポーズ窓: 保存/復元 (layer A, 段 V_PY〜, 桁PX..PX+PW-1) ----
 PSave:  lea     V_PSAV.l,a0
         moveq   #0,d0
         bra.s   ps_go
 PRest:  lea     V_PSAV.l,a0
         moveq   #1,d0
-ps_go:  bsr.w   PCnt6           ; 行数−1（項目数。キューブラッシュ以外は CUBE INFO・CUBE COLOR を出さない）
-        move.w  #PY,d1
+ps_go:  bsr.w   PCnt6           ; 段の数−1 = 項目の数
+        bsr.w   PYd1
+        moveq   #0,d5           ; 何段目か（12段目まで保存する）
 pr_row: move.w  d1,d3
         lsl.w   #6,d3
         addi.w  #PX,d3
@@ -1771,35 +1875,37 @@ pr_row: move.w  d1,d3
         lea     TILEA.l,a1
         adda.w  d3,a1
         moveq   #PW-1,d7
-pr_col: tst.b   d0
+pr_col: cmpi.w  #12,d5
+        bcc.s   pr_x
+        tst.b   d0
         bne.s   pr_r
         move.b  1(a1),(a0)+
         move.b  $4001(a1),(a0)+
         bra.s   pr_n
 pr_r:   move.b  (a0)+,1(a1)
         move.b  (a0)+,$4001(a1)
+        bra.s   pr_n
+pr_x:   tst.b   d0              ; 13段目から: 閉じるときは消す
+        beq.s   pr_n
+        move.b  #$10,$4001(a1)
+        clr.b   1(a1)
 pr_n:   addq.w  #2,a1
         dbf     d7,pr_col
         addq.w  #1,d1
+        addq.w  #1,d5
         dbf     d6,pr_row
         rts
 
-; 1行描く: a0=文字列(選択中なら '>' 付き), d4=行番号(0..2) → PY+1+d4
+; 1行描く: a0=文字列(選択中なら '>' 付き), d4=何番目か → 段 V_PY+1+d4
 PLine:  move.w  #PX+1,d0
-        move.w  d4,d1
-        addi.w  #PY+1,d1
+        bsr.w   PYd1
+        add.w   d4,d1
+        addq.w  #1,d1
         moveq   #0,d2
         jmp     PutStr.l
 
-; d6 = 項目の数（キューブラッシュは11、ほかは6）
-PCnt6:  moveq   #11,d6
-        cmpi.b  #2,$203f0b.l
-        beq.s   pc6_r
-        moveq   #6,d6
-pc6_r:  rts
-
-PDraw:  bsr.s   PCnt6
-        move.w  #PY,d1
+PDraw:  bsr.w   PMap
+        bsr.w   PYd1
 pd_cl:  move.w  #PX,d0
         moveq   #PW-1,d7
         movem.l d1/d6,-(a7)
@@ -1809,12 +1915,17 @@ pd_cl:  move.w  #PX,d0
         dbf     d6,pd_cl
         lea     PS_T.l,a0
         move.w  #PX+6,d0
-        move.w  #PY,d1
+        bsr.w   PYd1
         moveq   #0,d2
         jsr     PutStr.l
         moveq   #0,d4
+pd_lp:  lea     V_PMAP.l,a2
+        moveq   #0,d0
+        move.b  0(a2,d4.w),d0
+        lsl.w   #4,d0
         lea     PTAB.l,a2
-pd_lp:  movea.l 4(a2),a0
+        adda.w  d0,a2
+        movea.l 4(a2),a0
         cmp.b   V_PSEL.l,d4
         bne.s   pd_u
         movea.l (a2),a0
@@ -1838,20 +1949,57 @@ pd_oo:  lea     PS_OFF.l,a0
         lea     PS_ON.l,a0
 pd_v:   movem.l d4/a2,-(a7)
         move.w  #PX+15,d0
-        move.w  d4,d1
-        addi.w  #PY+1,d1
+        bsr.w   PYd1
+        add.w   d4,d1
+        addq.w  #1,d1
         moveq   #0,d2
         jsr     PutStr.l
         movem.l (a7)+,d4/a2
-pd_nx:  lea     16(a2),a2
-        addq.w  #1,d4
+pd_nx:  addq.w  #1,d4
         bsr.w   PCnt6
         cmp.w   d6,d4
         bcs.w   pd_lp
         rts
 
+; ---- ポーズを開いたとき: 装備の項目に、いまの装備を入れる（1P の自機 $201000） ----
+EqRead: lea     $201000.l,a0
+        lea     EQ_REQ.l,a1
+        clr.b   (a1)+
+        move.b  $69(a0),d0      ; SPEED = $69 の下位5ビット（5まで）
+        andi.b  #$1f,d0
+        cmpi.b  #5,d0
+        bls.s   er_s
+        moveq   #5,d0
+er_s:   move.b  d0,(a1)+
+        tst.b   $6d(a0)         ; MISSILE
+        sne     d0
+        andi.b  #1,d0
+        move.b  d0,(a1)+
+        moveq   #0,d0           ; DOUBLE/LASER: $6c = 0 なし / 1〜3 ダブル / 4〜 レーザー
+        move.b  $6c(a0),d1
+        beq.s   er_d
+        moveq   #1,d0
+        cmpi.b  #4,d1
+        bcs.s   er_d
+        moveq   #2,d0
+er_d:   move.b  d0,(a1)+
+        moveq   #0,d0           ; OPTION = 動いているオプション（$201100 から $50 ごと4つ。先頭の bit7）
+        lea     $201100.l,a2
+        moveq   #3,d1
+er_o:   tst.b   (a2)
+        bpl.s   er_o2
+        addq.b  #1,d0
+er_o2:  lea     $50(a2),a2
+        dbf     d1,er_o
+        move.b  d0,(a1)+
+        tst.b   $201f60.l       ; SHIELD = $201f60 の先頭の bit7
+        smi     d0
+        andi.b  #1,d0
+        move.b  d0,(a1)+
+        rts
+
 ; ---- ポーズ 1フレーム (MBS_PAUS==1 の間) ----
-; 上下: CONTINUE / GAME OVER / INVINCIBLE / RANK DISP / CUBE INFO / CUBE COLOR。ON/OFF の行では 左右・ショットで ON/OFF。START か ショットで決定
+; 上下で選ぶ。ON/OFF・値のある行では 左右・ショットで切り替え。START か ショットで決定（CONTINUE などの行）
 PauseFrame:
         tst.b   V_PST.l
         bne.s   pf_run
@@ -1859,6 +2007,8 @@ PauseFrame:
         clr.b   V_PSEL.l
         move.b  MBS_P1.l,V_PPIN.l
         move.b  MBS_SYS.l,V_PSIN.l
+        bsr.w   EqRead
+        bsr.w   PMap
         jsr     PSave.l
         jmp     PDraw.l
 pf_run: move.b  MBS_P1.l,d0
@@ -1887,20 +2037,20 @@ pf_dn:  btst    #3,d1           ; 下
         bhi.w   pf_rd
         clr.b   V_PSEL.l
         bra.w   pf_rd
-pf_lr:  moveq   #0,d0           ; ON/OFF のある行（INVINCIBLE・RANK DISP・CUBE INFO）: 左右・ショットで切り替え
-        move.b  V_PSEL.l,d0
+pf_lr:  bsr.w   PSelIx          ; ON/OFF・値のある行: 左右・ショットで切り替え
         cmpi.b  #2,d0           ; INVINCIBLE の行は NO DEATH では変えられない（いつも無敵）
         bne.s   pf_l2
         cmpi.b  #1,$203f0b.l
         beq.w   pf_nm
-pf_l2:  mulu    #16,d0
+pf_l2:  move.w  d0,d6           ; d6 = PTAB の番号
+        mulu    #16,d0
         lea     PTAB.l,a0
         move.l  12(a0,d0.w),d3  ; 値の表
         move.l  8(a0,d0.w),d0
-        beq.s   pf_nm
+        beq.w   pf_nm
         move.b  d1,d2
         andi.b  #$13,d2
-        beq.s   pf_nm
+        beq.w   pf_nm
         movea.l d0,a0
         tst.l   d3
         bne.s   pf_mv
@@ -1920,10 +2070,21 @@ pf_up:  addq.b  #1,d2
         bcs.s   pf_st
         moveq   #0,d2
 pf_st:  move.b  d2,(a0)
-pf_sv:  cmpi.b  #1,$203f0b.l    ; NO DEATH の無敵はスタートメニューの前回値に残さない
-        beq.w   pf_rd
+pf_sv:  cmpi.b  #PI_EQ,d6       ; 装備の行: 再開のときに装備をやり直す
+        bcs.s   pf_s2
+        cmpi.b  #PI_MISS,d6
+        bcc.s   pf_s2
+        move.b  #1,EQ_REQ.l
+pf_s2:  cmpi.b  #1,$203f0b.l    ; NO DEATH の無敵はスタートメニューの前回値に残さない
+        beq.s   pf_rd
         move.b  MBS_INV.l,V_LINV.l
 pf_rd:  movem.l d1/d5,-(a7)
+        jsr     PRest.l         ; 項目の数が変わる（INVINCIBLE の ON/OFF）と窓の大きさ・位置も変わるので、いったん戻して描き直す
+        bsr.w   PMap
+        cmp.b   V_PSEL.l,d6     ; 項目が減ったときに、選んでいる行が外に出ないように
+        bhi.s   pf_r2
+        clr.b   V_PSEL.l
+pf_r2:  jsr     PSave.l
         jsr     PDraw.l
         movem.l (a7)+,d1/d5
         rts
@@ -1931,10 +2092,29 @@ pf_nm:  andi.b  #$18,d5
         bne.s   pf_ok
         btst    #4,d1
         beq.s   pf_ret
-pf_ok:  jsr     PRest.l
+pf_ok:  bsr.w   PSelIx
+        move.w  d0,d2           ; d2 = 決めた項目（PRest は d2 を使わない）
+        jsr     PRest.l
         clr.b   V_PST.l
-        moveq   #2,d0           ; CONTINUE / INVINCIBLE の行 → 再開
-        cmpi.b  #1,V_PSEL.l
+        clr.b   V_LNL.l         ; CUBE LINE を描き直させる（窓の13段目からは保存していないので）
+        cmpi.b  #PI_MISS,d2     ; MISS: 自分で死ぬ（無敵でも。保険は純正どおり）
+        bne.s   pf_o2
+        clr.b   EQ_REQ.l
+        cmpi.b  #1,$203f0b.l    ; NO DEATH では残機を減らさない（先に1つ足しておく）
+        bne.s   pf_mi
+        move.b  $201050.l,d0
+        moveq   #1,d1
+        dc.w    $44fc,$0000     ; move #0,ccr
+        dc.w    $c101           ; abcd d1,d0
+        cmpi.b  #$99,d0
+        bcc.s   pf_mi
+        move.b  d0,$201050.l
+pf_mi:  move.b  #1,$203ed2.l    ; メインの InvChk: 無敵でも死ぬ
+        ori.b   #$80,$20101a.l  ; 自機の当たりの印
+        moveq   #2,d0
+        bra.s   pf_go
+pf_o2:  moveq   #2,d0           ; CONTINUE / INVINCIBLE などの行 → 再開
+        cmpi.b  #1,d2
         bne.s   pf_go
         moveq   #3,d0           ; GAME OVER
 pf_go:  move.b  d0,MBS_PAUS.l
