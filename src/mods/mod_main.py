@@ -644,13 +644,17 @@ np_r:   rts
 """)
 # 装備コマンドの残り回数（無敵中は無制限 $ff として返す）
 chunk('CmdCnt', """
-CmdCnt: cmpi.b  #1,MB_MODE.l    ; NO DEATH（#36）: クレジットがあれば、START は延長（クレジットを1つ使って +10分）
+CmdCnt: cmpi.b  #1,MB_MODE.l    ; NO DEATH（#36）: 残り30秒の表示が出ている間は、START は延長（+10分）
         bne.s   cc_i
+        cmpi.l  #1800,ND_LEFT.l
+        bhi.s   cc_i            ; 表示が出る前は、いつもの装備コマンド
+        tst.b   $4004a.l        ; フリープレイ: クレジットなしで延長
+        bne.s   cc_x
         move.b  $40034.l,d1
         beq.s   cc_i            ; クレジットが無ければ、いつもの装備コマンド
         moveq   #1,d7
         jsr     $2a76.w         ; クレジット −1（純正の START と同じ処理）
-        addi.l  #ND_FRAMES,ND_LEFT.l
+cc_x:   addi.l  #ND_FRAMES,ND_LEFT.l
         moveq   #0,d1           ; 装備コマンドは使わない
         rts
 cc_i:   tst.b   MB_INV.l        ; d1 = 残り回数（$ff=無制限。無敵中も無制限）。0 でなければ装備コマンドを使う
@@ -681,7 +685,13 @@ ph_nc:  jsr     PauseChk.l
         beq.w   ph_rts          ; 1: ポーズ中
         bcs.s   ph_np
         jsr     Command.l       ; 2: 装備コマンド（NO DEATH でクレジットがあれば延長）
-ph_np:  cmpi.b  #1,MB_MODE.l    ; NO DEATH（#36）: プレイ中のフレームを数える（ポーズ中は数えない）。0 になったらその場でゲームオーバー
+ph_np:  cmpi.b  #1,MB_MODE.l    ; NO DEATH（#36）: 自機を動かせる間だけ数える（ポーズ・START 表示・面クリア・エンディングなどは数えない）。0 でその場でゲームオーバー
+        bne.s   ph_nd
+        lea     $101001.l,a0    ; 自機の状態（3 = 動かせる）。いま遊んでいる側
+        tst.b   $4007f.l
+        beq.s   ph_n1
+        lea     $101081.l,a0
+ph_n1:  cmpi.b  #3,(a0)
         bne.s   ph_nd
         subq.l  #1,ND_LEFT.l
         bhi.s   ph_nd
