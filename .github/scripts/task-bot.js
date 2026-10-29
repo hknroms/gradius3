@@ -20,6 +20,8 @@
 //   /reject ひとこと         直してほしい点を伝えて「担当中」に戻す
 //   /fixed 版 [ひとこと]     （どの Issue でも）その版で直した → 閉じる。配布ページの「報告の状況」に「v0.4.17 で直しました」と出る
 //   /wontfix 理由            （どの Issue でも）見送る → 閉じる。配布ページには「見送り」と出る
+//   /later [理由]            （どの Issue でも）後の版でやる → ラベル「後の版」。まとめページで「後の版（今はやらなくてよい）」に分ける。配布ページには出さない
+//   /now                     「後の版」をやめて、元の状態に戻す
 //
 // 直ったかの確認（コマンドではなく、テストプレイ報告のフォームから）:
 //   配布ページの「確かめてほしいこと」（/fixed した報告）のボタンから報告を送ると、「確認した元の報告」「確認の結果」が入っている。
@@ -27,6 +29,7 @@
 
 const TYPES = ['検証', '調査', '実装', '素材', '資料'];
 const REQUEST = '要望';
+const LATER = '後の版';
 const REQUEST_ITEMS = [
   '書かれている現象・要望について、今の版での動きを確かめる（再現手順も書く）',
   '純正（改造なし）ではどうなるかと比べる',
@@ -47,6 +50,7 @@ const LABEL_DEFS = [
   { name: L.review, color: '1d76db', description: '提出済み・管理者の確認待ち' },
   { name: L.human, color: 'f85149', description: '人の目・判断が必要' },
   { name: L.done, color: '3fb950', description: '完了' },
+  { name: LATER, color: 'c5c5c5', description: '後の版でやる（今はやらなくてよい）' },
 ];
 const RENAMES = [['検証済み', L.done]];
 const STALE_DAYS = 3;
@@ -109,7 +113,7 @@ function parseCommands(text) {
   lines.forEach((raw, i) => {
     // Windows の Git Bash（MSYS）から送ると「/claim」が「C:/Program Files/Git/claim」に化ける → 元に戻す
     const line = raw.trim().replace(/^[A-Za-z]:\/Program Files(?: \(x86\))?\/Git\//i, '/');
-    const m = line.match(/^\/(claim|check|submit|done|human|release|items|type|accept|reject|fixed|wontfix)\b\s*(.*)$/i);
+    const m = line.match(/^\/(claim|check|submit|done|human|release|items|type|accept|reject|fixed|wontfix|later|now)\b\s*(.*)$/i);
     if (!m) return;
     const c = { name: m[1].toLowerCase(), arg: m[2].trim() };
     if (c.name === 'items') {
@@ -292,6 +296,18 @@ module.exports = async ({ github, context, core }) => {
         st.wontfix = cmd.arg; delete st.fixed_in; close = 'not_planned';
       }
       if (isTask()) status = L.done;
+      changed = true; did.add(n);
+      continue;
+    }
+    if (n === 'later' || n === 'now') {
+      if (!isAdmin) { errors.push(`\`/${n}\` は管理者だけが使えます`); continue; }
+      if (n === 'later') {
+        st.later = cmd.arg || true;
+        if (!labels.includes(LATER)) await github.rest.issues.addLabels({ owner, repo, issue_number: num, labels: [LATER] });
+      } else {
+        delete st.later;
+        if (labels.includes(LATER)) { try { await github.rest.issues.removeLabel({ owner, repo, issue_number: num, name: LATER }); } catch {} }
+      }
       changed = true; did.add(n);
       continue;
     }
