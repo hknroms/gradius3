@@ -32,3 +32,16 @@ FIX=732e:e05c1a040205000eda0413450001e04c134440014e714e71
 DELAY=1 DELAYCODE=1 SUBPATCH=$FIX ...   # 後に書くほう（番号）を遅らせても死なない
 DELAY=0 SUBPATCH=$FIX ...               # 9190〜9700 の画面は純正と1ピクセルも違わない（52枚）
 ```
+
+## 面ごとの洗い出し（2026-10-30・純正313）
+`clr.lua`：面クリア（`$40029` が 7 になった）フレームを tc として、tc−1〜tc+12 の vram/chr/shr をダンプし、サブの B 面への書き込み（`S <t> <番地> <値>`）を `tap.log` に記録する。`CLRDIR`・`CLRNEXT`（次に読む Lua）。
+```bash
+L=<リポジトリ>/src/lua; SEQ="1400:COIN,1500:START,1640:B1,1720:B1,1800:B1"; for f in $(seq 1950 6 80000); do SEQ="$SEQ,$f:B2"; done
+# 1〜9面: 死なない・撃ちっぱなしで面クリアまで
+CLRDIR=$PWD/runs/s2 CLRNEXT=$L/research/escape10/genstart.lua NEXT=$L/g3run.lua INV=1 STG=2 PROG=0000 HOLD=3 SEQ="$SEQ" END=80000 bash $L/run.sh <純正> $R/clr.lua x
+# 10面: 自動で動いて撃つ
+CLRDIR=$PWD/runs/s10 CLRNEXT=$L/research/cov/covplay.lua COVOUT=/dev/null STG=10 PROG=2341 LOOP=1 INV=1 MOVE=1 END=80000 bash $L/run.sh <純正> $R/clr.lua x
+python3 $R/cells.py runs/s2        # 10面は: cells.py runs/s10 1 3
+```
+`cells.py`：全部の升目が「番号は新しい・属性は古い」だったとして、自機の範囲で地形に当たる点の地図。
+`delay2.lua`：指定の升目（`DA`＝サブの属性の番地）の属性の書き込みを1フレーム遅らせ、その間は古い属性のまま（`DELAY=1`）。`RESTORE_AT` で無敵を外す。自機を置く位置は POKE（`10100a`＝X、`10100e`＝Y）。升目の番地は `terr.py` の idx から `0x24e001+idx`。
