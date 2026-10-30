@@ -151,6 +151,38 @@ sb_skip:
         movem.l (a7)+,d0-d7/a0-a6
         jmp     $5c8.l          ; 元の処理へ
 
+; ---- #32 面クリアの後の即死（面クリピシャン）の修正 ----
+; 純正のサブ $72C6〜 は、次の面のために B 面（地形）を作り直すとき、升目ごとに「番号 → 属性」の順に書く（$732E・$7342）。
+; 番号だけ新しく属性が古い瞬間は古いバンクの不透明な字になり、メインの地形の判定に当たって死ぬ。
+; 修正: 「属性 → 番号」の順に書く（途中の字は消したばかりの文字RAM＝透明）。
+; 効かせるのは、メニューから始めたとき（いつも）と、START だけのときは SW1:5 が OFF（初期状態）のとき。
+; SW1:5 を ON にすると純正どおり（#31 と同じスイッチ。2026-10-29 管理者決定）。DSW1 はメインが共有RAM $103814 に写す
+; 入口: d4 = 番号（下位）と属性の元（上位）、a1 = 升目。出口: d4 = 属性（純正と同じ）。d5 を壊す（純正と同じ）
+ClrFix:
+        tst.b   MBS_RUN.l
+        bne.s   cx_fix
+        btst    #4,$203814.l    ; SW1:5（負論理: 1 = OFF = 修正する）
+        bne.s   cx_fix
+        move.b  d4,$4001(a1)    ; 純正どおり: 番号 → 属性
+        lsr.w   #8,d4
+        move.b  d4,d5
+        andi.b  #$e,d4
+        andi.b  #$e1,d5
+        lsl.b   #1,d4
+        add.b   d5,d4
+        move.b  d4,1(a1)
+        rts
+cx_fix: move.b  d4,-(a7)        ; 番号を取っておく
+        lsr.w   #8,d4
+        move.b  d4,d5
+        andi.b  #$e,d4
+        andi.b  #$e1,d5
+        lsl.b   #1,d4
+        add.b   d5,d4
+        move.b  d4,1(a1)        ; 属性が先
+        move.b  (a7)+,$4001(a1) ; 番号が後
+        rts
+
 ; ---- 毎フレーム ----  (解除/ロック/自動ロックはメインCPU側で処理)
 Frame:
         lea     LNPAL.l,a0      ; パレット6 の 6〜15番（CUBE LINE の色と見出しの色）→ 共有RAM $103dec（メインが毎フレーム写す）
@@ -491,6 +523,8 @@ def apply(rom):
     assert SUB_FREE + len(b) <= DATA_BASE, hex(SUB_FREE + len(b))
     rom.put('sub', SUB_FREE, b, 'subcore')
     rom.put('sub', 0xbb6, bytes.fromhex('4ef9') + lab['ClrHook'].to_bytes(4, 'big'), 'clr-vars', expect=bytes.fromhex('41f900101c00'))
+    rom.put('sub', 0x732e, bytes.fromhex('4eb9') + lab['ClrFix'].to_bytes(4, 'big') + bytes.fromhex('4e71') * 9, 'clrfix-32',
+            expect=bytes.fromhex('13444001e04c1a040204000e020500e1e30cd80513440001'))   # #32 $732E〜$7345（24バイト）
     rom.put('sub', 0xafc4, bytes.fromhex('4eb9') + lab['CubeStick'].to_bytes(4, 'big'), 'cube-stick', expect=bytes.fromhex('117c00010026'))
     rom.put('sub', 0x877c, bytes.fromhex('4eb9') + lab['SprHook'].to_bytes(4, 'big') + bytes.fromhex('4e714e714e71'), 'menubg-spr', expect=bytes.fromhex('610000d213fc000000203936'))
     rom.put('sub', DATA_BASE, data, 'menudata')

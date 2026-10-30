@@ -102,6 +102,7 @@ StubIn: jsr     $33b8.w
         move.b  $c8001.l,d0
         not.b   d0
         move.b  d0,MB_SYS.l
+        move.b  $d0001.l,$103814.l  ; DSW1 をそのまま共有RAMへ（サブはディップスイッチを読めない。#32・#31 で使う。負論理: OFF=1）
         cmpi.b  #1,MB_PAUS.l    ; ポーズ中はフレームカウンタを進めない（キューブの並びがポーズでずれないように）
         bne.s   si_np
         subq.w  #1,$40032.l
