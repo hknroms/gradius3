@@ -2088,7 +2088,10 @@ pm_b:   move.b  d0,(a0)+
         addq.b  #1,d0
         cmpi.b  #PI_EQ,d0
         bcs.s   pm_b
-        move.b  #PI_HIT,(a0)+   ; HIT DISP（#38）はいつも出す
+        cmpi.b  #2,$203f0b.l    ; HIT DISP（#38）はキューブラッシュ（CUBE NO DEATH も始めると 2）のほかで出す（2026-10-30 管理者）
+        beq.s   pm_nh
+        move.b  #PI_HIT,(a0)+
+pm_nh:
         cmpi.b  #1,$203f0b.l    ; 装備と MISS は NO DEATH のときだけ（2026-10-29 管理者。INVINCIBLE はリリースで外すので）
         bne.s   pm_c
 pm_e:   move.b  d0,(a0)+
