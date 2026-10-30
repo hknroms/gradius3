@@ -100,7 +100,7 @@ ROM の解析で分かったこと・改造で使っている場所のメモ。�
 - MAME は CLAUDE.md の手順でビルド済みを使う。
 - アセンブラ（`src/tools/asm68.py`）の制約: オペランドに式は書けない（`TILEA+$298` は不可、数値で書く）。bcc.s が届かないときは .w に。奇数番地のワード読みは不可。
 - テスト: `src/lua/run.sh <romdir> src/lua/g3run.lua <outdir>`、環境変数 SEQ / HOLDK / POKE / WATCH / SNAP / OUTLOG / END。
-  - キューブラッシュ開始（v0.5.1〜。INVINCIBLE の行が無くなりカーソルは MODE から）: `SEQ="1400:COIN,1500:START,1660:R,1700:R,1820:START,1950:B1,2250:B1,2550:B1" HOLDK="1495:U:20"`（MODE を R 2回で CUBE RUSH。約2700フレームでプレイ開始）。無敵が要るテストは `POKE="1790:103f20:1"`。INVINCIBLE を残すビルドは `KEEP_INV=1`
+  - キューブラッシュ開始: `SEQ="1400:COIN,1500:START,1620:D,1660:R,1700:R,1820:START,1950:B1,2250:B1,2550:B1" HOLDK="1495:U:20"`（カーソルは INVINCIBLE から。D で MODE、R 2回で CUBE RUSH。約2700フレームでプレイ開始）。`NO_INV=1` のビルドは INVINCIBLE の行が無いので D を外す
   - ポーズ: START を約1秒押す（`HOLDK=...,3400:START:70`）。ポーズ内は上下で項目、左右/ショットで値、CONTINUE で B1。
 - 調査用の小さなスクリプトは `src/lua/research/`（前の会話の作業フォルダのパスが残っているものは、使う前に直す）。
 - リリース: `dev/notes/<版>.json` を作って `python3 tools/release.py <版> <出力> <313メインのフォルダ> <gradius3.zip> dev/notes/<版>.json` → docs/index.html の説明を更新 → commit → **ユーザーに確認してから push**（CLAUDE.md）→ リンクを伝える。前の版の notes の known の項目は次の版にも引き継ぐ。

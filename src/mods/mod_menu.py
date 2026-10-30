@@ -13,7 +13,7 @@ import struct
 import os
 EXTRA_AREAS = os.environ.get('EXTRA_AREAS') == '1'
 BOSSRUSH = os.environ.get('BOSSRUSH') == '1'
-NOINV = os.environ.get('KEEP_INV') != '1'   # リリースではスタートメニュー・ポーズの INVINCIBLE を外す（v0.5.1〜。KEEP_INV=1 で残す）
+NOINV = os.environ.get('NO_INV') == '1'   # スタートメニュー・ポーズの INVINCIBLE を外す（一般公開のとき。NO_INV=1。2026-10-30 管理者：今は残す）
 # 各行の表示（英字は普通の文字、数字は白抜き ❶〜❹）
 _W = lambda n: '#%d' % n
 AREA_LABELS_LESS = [

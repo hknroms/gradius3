@@ -1,5 +1,5 @@
 {
- "title": "NO DEATH モード・CUBE NO DEATH モード／当たり判定の表示（HIT DISP）／CUBE FLASH／面クリア後の即死を修正／キューブラッシュの左端の地形／INVINCIBLE を外した",
+ "title": "NO DEATH モード・CUBE NO DEATH モード／当たり判定の表示（HIT DISP）／CUBE FLASH／面クリア後の即死を修正／キューブラッシュの左端の地形",
  "changes": [
   "メニューの MODE に NO DEATH を追加：死なないモードを時間制で遊べる。1クレジット10分（ディップスイッチで5分）。自機を動かせる間だけ時間が減る。残り30秒から画面に TIME が出て、その表示中に START を押すとクレジットを1つ使って +10分（フリープレイはクレジットなし）。0 になるとその場でゲームオーバー。ハイスコアには入らない",
   "NO DEATH のポーズで、装備（SPEED・MISSILE・DOUBLE/LASER・OPTION・SHIELD）を変えられる。MISS で自分から1機やられることもできる（残機は減らない）。最初の START 表示の間に操作の案内を出す",
@@ -12,8 +12,7 @@
   "キューブラッシュのポーズの CUBE LINE V と CUBE LINE H を CUBE LINE 1つにまとめた（縦と横をいつも両方出す）",
   "キューブラッシュで、9面の左端の地形（迷路の最後のブロック）が出るようにした。キューブのくっつき方が実機と同じになる（MAME で最初の60個が実機と同じ位置に止まることを確認）。左端の砲台は出ない（グラディウス オリジン コレクションのトレーニングモードと同じ）。開始の位置・止まるまでの時間は今までどおり",
   "面クリアの直後に、何もない所で自機がやられることがあるのを直した（純正のバグ。面が切り替わる瞬間に、地形の字が一瞬だけ当たりになっていた）。メニューから始めたときはいつも、START だけで始めたときはディップスイッチ SW1:5 が OFF（初期状態）のときに直る。SW1:5 を ON にすると純正どおり",
-  "9面で、キューブラッシュ以外のモードでリザードコアのあたりでやられると、キューブ地帯の手前から再開していた（キューブラッシュに切り替わったように見えた）のを、純正どおり面の最初から再開するように直した",
-  "スタートメニューとポーズメニューから INVINCIBLE を外した（死なずに遊ぶには NO DEATH / CUBE NO DEATH を使う）。メニューのカーソルは MODE から始まる"
+  "9面で、キューブラッシュ以外のモードでリザードコアのあたりでやられると、キューブ地帯の手前から再開していた（キューブラッシュに切り替わったように見えた）のを、純正どおり面の最初から再開するように直した"
  ],
  "verified": [
   "NO DEATH・CUBE NO DEATH が無敵・時間制で始まり、残り30秒の表示・延長・0 でのゲームオーバーが動くこと（MAME）",
@@ -24,7 +23,6 @@
   "面が切り替わるときの書き込みの順が、SW1:5 OFF とメニューから始めたときは直した順、SW1:5 ON は純正どおりになること（MAME。もともと MAME ではタイミングの関係で自然には起きない）",
   "キューブラッシュで、キューブの出る高さを同じ並びにしたとき、最初の60個が純正の9面と同じ位置に止まること（MAME。前の版は60個中23個がずれていた）",
   "9面で NORMAL のまま X 05B0 でやられると、面の最初から再開すること（MAME）",
-  "スタートメニュー・ポーズに INVINCIBLE が出ないこと",
   "NO DEATH のポーズの TIME が残り時間を出し、ポーズ中は止まり、延長すると増えること（MAME）"
  ],
  "known": [
@@ -37,10 +35,10 @@
   "オプションハンターは1周目の序盤など、ゲームの条件によってはもともと出ない（タイマーが進まない）",
   "装備コマンドは装備を足すだけなので、レーザー・ダブルを持っている状態からミサイル＋START を押してもノーマルショットには戻らない",
   "解除コマンドの一時停止中は、通常プレイでもレバー上か下を入れたまま START を押すとメニューに入る",
-  "NO DEATH・CUBE NO DEATH の無敵の間は壁の中に入り込める"
+  "無敵中は壁の中に入り込める"
  ],
  "en": {
-  "title": "NO DEATH and CUBE NO DEATH modes / hitbox display (HIT DISP) / CUBE FLASH / fix for sudden death right after a stage clear / Cube Rush left-edge terrain / INVINCIBLE removed",
+  "title": "NO DEATH and CUBE NO DEATH modes / hitbox display (HIT DISP) / CUBE FLASH / fix for sudden death right after a stage clear / Cube Rush left-edge terrain",
   "changes": [
    "Added NO DEATH to the menu MODE: play without dying on a timer. 10 minutes per credit (5 minutes with a DIP switch). Time only runs while you can move the ship. From 30 seconds left, TIME is shown; press START while it is shown to use one credit and add 10 minutes (no credit needed on free play). At 0 the game ends on the spot. Scores do not enter the high score table",
    "In NO DEATH, the pause menu lets you change equipment (SPEED, MISSILE, DOUBLE/LASER, OPTION, SHIELD), and MISS lets you lose a ship on purpose (your stock does not go down). A short guide to the controls is shown during the first START display",
@@ -53,8 +51,7 @@
    "Merged CUBE LINE V and CUBE LINE H in the Cube Rush pause menu into one CUBE LINE item (vertical and horizontal lines are always shown together)",
    "In Cube Rush, the terrain at the left edge of stage 9 (the last blocks of the maze) now appears, so cubes stick the same way as on the arcade (in MAME the first 60 cubes stop at the same positions as the original). The turrets at the left edge do not appear (as in the training mode of Gradius Origins). The start position and the time until the screen stops are unchanged",
    "Fixed the ship sometimes being destroyed in empty space right after a stage clear (a bug in the original: when the stage changes, a terrain character could become solid for a moment). The fix is always on when you start from the menu; when you start with START only, it is on while DIP switch SW1:5 is OFF (the default). With SW1:5 ON the game behaves like the original",
-   "Fixed: in stage 9, outside Cube Rush, losing a ship around the Lizard Core restarted you in front of the cube section (it looked as if the game switched to Cube Rush). You now restart from the beginning of the stage, as in the original",
-   "Removed INVINCIBLE from the start menu and the pause menu (use NO DEATH or CUBE NO DEATH to play without dying). The menu cursor now starts on MODE"
+   "Fixed: in stage 9, outside Cube Rush, losing a ship around the Lizard Core restarted you in front of the cube section (it looked as if the game switched to Cube Rush). You now restart from the beginning of the stage, as in the original"
   ],
   "verified": [
    "NO DEATH and CUBE NO DEATH start invincible on a timer; the 30-second display, the extension and the game over at 0 work (MAME)",
@@ -65,7 +62,6 @@
    "When the stage changes, the write order is the fixed one with SW1:5 OFF or when started from the menu, and the original one with SW1:5 ON (MAME; in MAME the bug does not happen by itself because of timing)",
    "In Cube Rush, with the same sequence of cube heights, the first 60 cubes stop at the same positions as in the original stage 9 (MAME; the previous version had 23 of 60 in different places)",
    "In stage 9 in NORMAL, losing a ship at X 05B0 restarts from the beginning of the stage (MAME)",
-   "INVINCIBLE no longer appears in the start menu or the pause menu",
    "TIME in the NO DEATH pause menu shows the remaining time, stops while paused, and goes up after an extension (MAME)"
   ],
   "known": [
@@ -78,7 +74,7 @@
    "The Option Hunter does not appear at all under some game conditions, such as early in the first loop (its timer does not advance)",
    "The power-up command only adds equipment, so pressing Missile + START while you have Laser or Double does not take you back to the normal shot",
    "While the unlock command is suspended, pressing START while holding Up or Down enters the menu even in normal play",
-   "While invincible in NO DEATH or CUBE NO DEATH you can go inside walls"
+   "While invincible you can go inside walls"
   ]
  }
 }
