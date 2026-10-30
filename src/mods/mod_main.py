@@ -27,6 +27,7 @@ EXTRA_AREAS = os.environ.get('EXTRA_AREAS') == '1'    # 場所を調整して足
 ND_FRAMES = 36000        # NO DEATH（#36）の1クレジットの時間（フレーム。10分）
 ND_LEFT = 0x103e10       # NO DEATH の残りフレーム.l（共有RAM。以前ボスラッシュの表を置いていた所）
 ND_FLAG = 0x103e1a       # NO DEATH の印（共有RAM。MODE 1=NO DEATH と MODE 3=CUBE NO DEATH で立つ。#39）
+ND_TIME = 0x103e1c       # NO DEATH の時間（.l フレーム。ディップスイッチ #40 で 36000 か 18000）
 MB = 0x103f00           # メールボックス（共有RAM。サブ側は 0x203f00）
 # オフセット
 O_P1, O_SYS, O_UNLOCK, O_REQ, O_DONE, O_KIND, O_PAUSE, O_MODRUN = 0, 1, 2, 3, 4, 5, 6, 7
@@ -73,6 +74,7 @@ MB_PEND  = $103f1a
 MB_INV   = $103f20
 ND_LEFT  = ${ND_LEFT:x}
 ND_FLAG  = ${ND_FLAG:x}
+ND_TIME  = ${ND_TIME:x}
 ND_FRAMES = {ND_FRAMES}
 RAMMAGIC = ${RAMMAGIC:x}
 MAGICVAL = ${MAGICVAL:x}
@@ -87,8 +89,8 @@ ANY = {'rom', 'shr', 'mrm'}
 # 隙間の列（つなぎの bra.s で少し遅くなる）には、めったに通らない処理だけを置く（COLD の順に入るだけ）
 def chunk(name, src, where='any'):
     CHUNKS.append((name, src, {'rom'} if where == 'rom' else set(ANY) if where == 'any' else where))
-COLD = ['LoadW', 'EdLR', 'TypeBeg', 'TypeGrey', 'ApplyStart', 'ApplyStage', 'NextStg', 'NextPos', 'BossSet', 'PendB',
-        'CmdCnt', 'Command', 'AreaTbl', 'EvPtr', 'Die', 'ShPal', 'StageHook', 'ModState', 'PalCopy']
+COLD = ['LoadW', 'EdLR', 'TypeBeg', 'TypeGrey', 'PalCopy', 'ApplyStart', 'ApplyStage', 'NextStg', 'NextPos', 'BossSet', 'PendB',
+        'CmdCnt', 'Command', 'AreaTbl', 'EvPtr', 'Die', 'ShPal', 'StageHook', 'ModState']
 
 # 毎フレーム（フレームの処理の最初。0x1d1e の jsr $33b8 を置き換え）: 入力の写し・スコアの描き直し・見出しの色
 chunk('StubIn', """
@@ -252,16 +254,22 @@ ApplyStart:                     ; メニュー確定直後: 改造プレイ開�
         tst.b   MB_MODE.l
         beq.s   as_1
         st      $103f22.l
-as_1:   move.l  #ND_FRAMES,ND_LEFT.l   ; NO DEATH（#36）の残り時間
+as_1:   moveq   #5,d1           ; d1 = CUBE RUSH 残機ボーナス (OFF=+5, sk_set 内で使用)
+        move.l  #ND_FRAMES,d0   ; d0 = 時間 (OFF=36000フレーム=10分)
+        tst.b   $d0001.l        ; DSW1 bit7 (#40 負論理): N= bit7（1=OFF/default・0=ON）
+        bmi.s   as_1t
+        moveq   #2,d1           ; ON = +2機
+        move.l  #18000,d0       ; ON = 5分
+as_1t:  move.l  d0,ND_LEFT.l
+        move.l  d0,ND_TIME.l    ; CmdCnt の延長・CUBE NO DEATH で使う
         lea     $101000.l,a0
         bsr.s   sk_set
         lea     $101080.l,a0
-sk_set: cmpi.b  #2,MB_MODE.l    ; 残機はディップスイッチどおり。キューブラッシュはそれに +4（遊んでいない側＝残機0 には足さない）
+sk_set: cmpi.b  #2,MB_MODE.l    ; 残機はディップスイッチどおり。キューブラッシュはそれに +5(10分) か +2(5分) (#40)
         bne.s   sk_sr
         tst.b   $50(a0)
         beq.s   sk_sr
-        move.b  $50(a0),d0      ; 残機は BCD
-        moveq   #4,d1
+        move.b  $50(a0),d0      ; 残機は BCD（d1 は呼び出し元から渡される）
         dc.w    $44fc,$0000     ; move #0,ccr
         dc.w    $c101           ; abcd d1,d0
         move.b  d0,$50(a0)
@@ -703,7 +711,8 @@ CmdCnt: tst.b   ND_FLAG.l       ; NO DEATH（#36・CUBE NO DEATH #39）: 残り3
         beq.s   cc_i            ; クレジットが無ければ、いつもの装備コマンド
         moveq   #1,d7
         jsr     $2a76.w         ; クレジット −1（純正の START と同じ処理）
-cc_x:   addi.l  #ND_FRAMES,ND_LEFT.l
+cc_x:   move.l  ND_TIME.l,d1    ; +ND_TIME（#40 のディップスイッチで 10分 or 5分）
+        add.l   d1,ND_LEFT.l
         moveq   #0,d1           ; 装備コマンドは使わない
         rts
 cc_i:   tst.b   MB_INV.l        ; d1 = 残り回数（$ff=無制限。無敵中も無制限）。0 でなければ装備コマンドを使う

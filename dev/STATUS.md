@@ -21,7 +21,12 @@
   - サブの時間表示・最初の案内・ポーズの INVINCIBLE グレーアウト判定は ND_FLAG に。ポーズの装備・MISS は MODE 1 だけのまま。
   - メニューの INVINCIBLE グレーアウト（CubeSkip）は MODE 1 または 3。CUBE 行のグレーアウトは MODE 2 または 3。グリッド表示（dg_lp）も同じ。
   - BOSS RUSH の番号を 3→4 に変更（CUBE NO DEATH が 3 を使うため）：mod_main の NextStg/NextPos/SHBOSS、mod_sub の BOSSBLOB/EXTB 選択・BrSkip、mod_menu の mf_go ボスラッシュ処理。BOSSRUSH=0 では死にコード、=1 では必須。
-  - 残り：ROM が無いので実機/MAME テスト未実施。
+  - MAME 動作確認済（ROM 添付）: MODE 0/1/2 は不変・MODE 3 で mode=2 ・ ND_FLAG=1 ・ INV=1 ・開始面=9 を確認。実プレイでのキューブ区間終わり残機 +1 は長時間テストが必要（コードレビューOK）。
+- **2026-10-30 続き**：**#40 ディップスイッチ 実装（main・未公開）**：
+  - ND_TIME = $103e1c（共有RAM .l）を新設。ApplyStart の as_1 で DSW1 bit7 (`tst.b $d0001.l / bmi.s`) を見て、OFF(初期値)=36000 (10分) / ON=18000 (5分) を d0 に、キューブ残機ボーナスを d1 に（+5 / +2）置く。ND_LEFT と ND_TIME に書き、sk_set は d1 を使う（`moveq #4,d1` を削除）。
+  - CmdCnt cc_x: `addi.l #ND_FRAMES,ND_LEFT.l` → `move.l ND_TIME.l,d1 / add.l d1,ND_LEFT.l` に（+2B）。
+  - 容量：ApplyStart が +26B 大きくなった。COLD の順番で PalCopy を早めに移動して隙間に入るようにした（並べ替えだけ、1行変更）。メインの残り合計: 68B（stream 0）。
+  - MAME 動作確認（DSW OFF 側、デフォルト）: MODE 0/1/2/3 で ND_TIME=36000・CUBE RUSH で残機 3→8（+5）を確認。DSW ON 側（5分/+2）は MAME lua から DIP の値を変える手段が機能せず未検証。コードレビュー: tst.b/bmi 分岐と cc_x の ND_TIME 使用で正しく動くはず。
 
 - 理由：テストプレイヤーが集まらないので、バグが少なそうな形で先にリリースし、みんなに試してもらう。
 - **次のリリースに入れる**：
