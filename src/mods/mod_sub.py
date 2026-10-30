@@ -199,6 +199,7 @@ fe_set: move.b  d1,$203ed1.l
         move.b  #1,$20106a.l
 fe_g:
 fe_x:   moveq   #0,d1               ; CUBE COLOR が有効か → $203ed4（メインはこれを見てキューブの色を写す）
+        moveq   #0,d2               ; CUBE FLASH（#48）が有効か
         cmpi.b  #2,TOPSTATE.l
         bne.s   fc_s
         tst.b   MBS_RUN.l
@@ -208,7 +209,9 @@ fe_x:   moveq   #0,d1               ; CUBE COLOR が有効か → $203ed4（メ�
         cmpi.b  #2,$203f0b.l
         bne.s   fc_s
         move.b  $203f34.l,d1
+        move.b  $203813.l,d2
 fc_s:   move.b  d1,V_CCW.l
+        move.b  d2,$103758.l        ; V_CFW（mod_menu）
         jsr     CubeCol.l
         tst.b   $203ed2.l           ; ポーズの MISS（キューブラッシュ以外）: 死んだら「無敵でも死ぬ」印を下ろす
         beq.s   fr_mx

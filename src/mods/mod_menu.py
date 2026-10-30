@@ -155,6 +155,26 @@ def line_pal():
     w = cols[0:3] + [0x10a9] + cols[3:8] + [0x5252]
     return b''.join(struct.pack('>H', v) for v in w)
 
+# ---- CUBE FLASH（#48）: 反応する少し前から反応するまで、そのキューブを白っぽく光らせる。
+# 色は CUBE COLOR の9つ目（灰色＝反応しない）の枠を白に替えて使う（CUBE FLASH が ON の間、反応しないキューブは元の色のまま）
+CF_FLAG = 0x203813     # ON/OFF（共有RAM $103813。メニューから始めるたびに OFF）
+CF_N    = 12           # 反応の何フレーム前から光らせるか
+def _white_pal():
+    P = _stage9_pal()
+    src = P[29*16:29*16+16]
+    out = struct.pack('>I', 0x80000 + CC_PALS[8] * 32 + 8)
+    for i, w in enumerate(src):
+        if i < 4: continue
+        if w == 0: out += struct.pack('>H', 0); continue
+        r, g, b = (w >> 10) & 31, (w >> 5) & 31, w & 31
+        L = r * 0.3 + g * 0.59 + b * 0.11
+        v = min(31, int(14 + L * 0.75 + 0.5))
+        out += struct.pack('>H', (w & 0x8000) | (v << 10) | (v << 5) | v)
+    return out
+def cube_flash_palettes(tint):
+    """tint=True: CUBE COLOR の8色＋白 / False: 元の8色＋白"""
+    base = cube_tint_palettes() if tint else cube_orig_palettes()
+    return base[:28 * 8] + _white_pal()
 def cube_orig_palettes():
     P = _stage9_pal()
     out = bytearray()
@@ -242,6 +262,8 @@ def build_data(base):
     blob.extend(cube_orig_palettes())
     lab['CCCOL'] = base + len(blob)
     blob.extend(bytes([(p - 16) << 1 for p in CC_PALS]))
+    al(); lab['CFTNT'] = base + len(blob); blob.extend(cube_flash_palettes(True))    # #48 CUBE COLOR と CUBE FLASH の両方
+    al(); lab['CFORG'] = base + len(blob); blob.extend(cube_flash_palettes(False))   # #48 CUBE FLASH だけ
     al(); lab['LNGFX'] = base + len(blob); blob.extend(line_tiles())
     al(); lab['LNCOL'] = base + len(blob); blob.extend(line_cols())
     al(); lab['LNPAL'] = base + len(blob); blob.extend(line_pal())
@@ -269,6 +291,8 @@ def build_data(base):
     put('PS_U0', b'>CUBE HUNTER\0')
     put('PS_U1', b' CUBE HUNTER\0')
     put('PS_ON', b'ON \0')
+    put('PS_CF0', b'>CUBE FLASH\0')   # #48
+    put('PS_CF1', b' CUBE FLASH\0')
     put('PS_HB0', b'>HIT DISP\0')   # #38 当たり判定の表示
     put('PS_HB1', b' HIT DISP\0')
     # NO DEATH のときだけ出す: 装備（#36 の続き。再開のときにメインがやり直す）と MISS（自分で死ぬ）
@@ -293,7 +317,8 @@ def build_data(base):
     for a, b, f, vt in [('PS_C0', 'PS_C1', 0, 0), ('PS_G0', 'PS_G1', 0, 0), ('PS_I0', 'PS_I1', 0x203f20, 0), ('PS_R0', 'PS_R1', 0x203f0e, 0), ('PS_S0', 'PS_S1', 0x2039c4, 0), ('PS_P0', 'PS_P1', 0x203f2b, 0),
                          ('PS_ES0', 'PS_ES1', 0x203e15, 'EQSPD'), ('PS_EM0', 'PS_EM1', 0x203e16, 0), ('PS_ED0', 'PS_ED1', 0x203e17, 'EQDL'),
                          ('PS_EO0', 'PS_EO1', 0x203e18, 'EQOPT'), ('PS_EH0', 'PS_EH1', 0x203e19, 0), ('PS_X0', 'PS_X1', 0, 0), ('PS_Q0', 'PS_Q1', 0x203f0c, 0), ('PS_K0', 'PS_K1', 0x203f34, 0), ('PS_V0', 'PS_V1', 0x203f1c, 'LVTAB'), ('PS_H0', 'PS_H1', 0x203f3b, 'LHTAB'), ('PS_U0', 'PS_U1', 0x203f33, 0),
-                         ('PS_HB0', 'PS_HB1', HB_FLAG, 0)]:   # 17 = HIT DISP（#38。いつも出す）
+                         ('PS_HB0', 'PS_HB1', HB_FLAG, 0),
+                         ('PS_CF0', 'PS_CF1', CF_FLAG, 0)]:   # 18 = CUBE FLASH（#48。キューブラッシュだけ）   # 17 = HIT DISP（#38。いつも出す）
         blob.extend(struct.pack('>IIII', lab[a], lab[b], f, lab[vt] if vt else 0))
     # STAGE DISP のエリア: 面1〜10 × 12。本来のエリア（英字）だけ（❶〜❹ は使わない＝手前の英字のまま。2026-10-28 管理者）
     #   STLAB = 英字（残りは 0）、STPRG = その開始進行度（メニューの表 PROGTBL と同じ値）
@@ -686,6 +711,7 @@ mi_ah:  move.b  (a0),(a1)+
         clr.b   $203f3b.l       ; CUBE LINE H
         clr.b   $203f0c.l
         clr.b   $203f34.l       ; CUBE COLOR
+        clr.b   $203813.l       ; CUBE FLASH（#48）
         clr.b   $203f33.l       ; CUBE HUNTER（始めは OFF = 出さない）
         jsr     ClrAll.l
         jsr     MbgInit.l
@@ -1279,7 +1305,9 @@ cst_x:  addi.l  #$22,(a7)       ; 戻り先を 0xafec（rts）へ: 描かない
 V_CCAT  = $1036f0          ; スロットごとの色の種類（-1=そのまま, 0〜8）32バイト
 V_CCW   = $1036ea          ; CUBE COLOR を使いたい（サブの Frame が毎フレーム決める）
 V_CCR   = $1036eb          ; 元の色に戻す残りフレーム
-V_CCS   = $103724          ; パレットの写しの中身（0=なし 1=色付き 2=元の色）
+V_CCS   = $103724          ; パレットの写しの中身（0=なし 1=色付き 2=元の色 3=元の色＋白 4=色付き＋白 #48）
+V_CFW   = $103758          ; CUBE FLASH を使いたい（サブの Frame が毎フレーム決める。#48）
+CF_N    = 12               ; 反応の何フレーム前から光らせるか（Python の CF_N と同じ）
 CCN     = 9                ; 借りるパレットの数
 CubeCol:
         moveq   #0,d5           ; 生きているキューブの数
@@ -1292,9 +1320,33 @@ kc_l:   tst.b   (a0)
         cmpi.w  #$3301,$28(a0)
         bne.w   kc_n
         addq.w  #1,d5
-        tst.b   V_CCW.l
-        beq.w   kc_n
+        tst.b   V_CFW.l         ; CUBE FLASH（#48）: 反応する CF_N フレーム前から反応するまで、9つ目（白）の色に
+        beq.s   kc_nf
         tst.b   $2a(a0)
+        bne.s   kc_nf
+        cmpi.w  #CF_N,$3a(a0)
+        bhi.s   kc_nf
+        move.l  8(a0),d0        ; 画面の中で反応するキューブだけ（反応する x が 8 以上）
+        sub.l   $2038de.l,d0
+        asr.l   #8,d0
+        move.w  $3a(a0),d1
+        add.w   d1,d1
+        sub.w   d1,d0
+        cmpi.w  #8,d0
+        blt.s   kc_nf
+        move.b  8(a3),d3
+        bra.w   kc_put
+kc_nf:  tst.b   V_CCW.l
+        bne.s   kc_cc
+        tst.b   V_CFW.l         ; CUBE FLASH だけのとき: 光らせ終わったら元の色（パレット29）に戻す
+        beq.w   kc_n
+        move.b  4(a0),d4
+        andi.b  #$1e,d4
+        cmp.b   8(a3),d4
+        bne.w   kc_n
+        moveq   #$1a,d3
+        bra.s   kc_put
+kc_cc:  tst.b   $2a(a0)
         bne.s   kc_set
         move.l  8(a0),d0
         sub.l   $2038de.l,d0
@@ -1311,12 +1363,17 @@ kc_t:   cmp.w   (a4)+,d0
         blt.s   kc_k
         subq.w  #1,d2
         bpl.s   kc_t
-kc_k:   move.b  d2,(a2)
+kc_k:   cmpi.b  #8,d2           ; CUBE FLASH が ON の間は、9つ目（灰色の枠）は白に使うので、反応しないキューブは元の色
+        bne.s   kc_k2
+        tst.b   V_CFW.l
+        beq.s   kc_k2
+        moveq   #-1,d2
+kc_k2:  move.b  d2,(a2)
 kc_set: move.b  (a2),d2
         bmi.s   kc_n
         ext.w   d2
         move.b  0(a3,d2.w),d3
-        move.b  4(a0),d4
+kc_put: move.b  4(a0),d4
         andi.b  #$e1,d4
         or.b    d3,d4
         move.b  d4,4(a0)
@@ -1324,13 +1381,22 @@ kc_n:   lea     $50(a0),a0
         addq.l  #1,a2
         dbf     d6,kc_l
         ; パレット: 使う間は色付きの9つ、やめたら数フレームだけ元の色を置く（メインが $103cb0〜 を写す）
-        tst.b   V_CCW.l
-        beq.s   kc_off
         tst.w   d5
         beq.s   kc_off
+        tst.b   V_CFW.l         ; #48: CUBE FLASH が ON なら、9つ目が白の組
+        beq.s   kc_p1
+        lea     CFORG.l,a0
+        moveq   #3,d1
+        tst.b   V_CCW.l
+        beq.s   kc_p2
+        lea     CFTNT.l,a0
+        moveq   #4,d1
+        bra.s   kc_p2
+kc_p1:  tst.b   V_CCW.l
+        beq.s   kc_off
         lea     CCPAL.l,a0
-        move.b  #3,V_CCR.l
         moveq   #1,d1
+kc_p2:  move.b  #3,V_CCR.l
         bra.s   kc_cp
 kc_off: tst.b   V_CCR.l
         beq.s   kc_none
@@ -2081,6 +2147,7 @@ PI_EQ   = 6                ; PTAB の装備の項目の始め（6〜10 = 装備�
 PI_MISS = 11
 PI_CUBE = 12
 PI_HIT  = 17
+PI_CF   = 18
 ; ---- 出す項目の表を作る: いつもの6つ ＋ NO DEATH なら装備と MISS ＋ キューブラッシュならキューブの5つ。d6 = 数 ----
 PMap:   lea     V_PMAP.l,a0
         moveq   #0,d0
@@ -2105,6 +2172,7 @@ pm_k:   move.b  d0,(a0)+
         addq.b  #1,d0
         cmpi.b  #PI_CUBE+5,d0
         bcs.s   pm_k
+        move.b  #PI_CF,(a0)+    ; CUBE FLASH（#48）
 pm_x:   move.l  a0,d6
         subi.l  #V_PMAP,d6
         move.b  d6,V_PCNT.l
