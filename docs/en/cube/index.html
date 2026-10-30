@@ -92,18 +92,41 @@ button{font:inherit;padding:6px 14px;border-radius:8px;border:1px solid var(--ac
 </ul>
 
 <h2>How the Sequence Is Decided</h2>
-<p>Because the intervals are fixed, <b>the timer value at the moment the 1st cube appears alone decides the heights of all 99 cubes</b> (when there is no slowdown).</p>
+<p>Because the intervals are fixed, <b>the timer value at the moment the 1st cube appears alone decides the heights of all 99 cubes</b> (when there is no slowdown). There are <b>2880</b> different sequences in all.</p>
+
+<h2>What H, S and T Mean, and How to Choose Them</h2>
+<p>CUBE HEIGHT (H), SHIFT (S) and TYPE (T) in the mod ROM's menu are <b>numbers</b> given to these 2880 sequences (16 × 4 × 45 = 2880).</p>
+<ul>
+  <li><b>Only H has a meaning you can see</b>: it is the height of the 1st cube.</li>
+  <li><b>S and T are not values that exist in the game.</b> They are "catalog numbers" for telling the sequences apart. You don't work out a sequence from them.</li>
+  <li>So the way to use them is: <b>look at the sequences first, note the H, S and T of one you like, and pick them in the menu.</b> In "<a href="#view">View a Sequence</a>" below, choosing H, S and T shows all 99 cubes as a chart and as numbers.</li>
+</ul>
+<div style="overflow-x:auto"><table>
+<tr><th></th><th>Values</th><th>What it is</th><th>Changing it by one</th></tr>
+<tr><th>H</th><td style="white-space:nowrap">1–16</td><td>Height of the 1st cube (number in the table above; 1 is the lowest)</td><td>The 1st cube's height changes, and the rest becomes an almost entirely different sequence</td></tr>
+<tr><th>S</th><td style="white-space:nowrap">A–D</td><td>Family of the sequence (4)</td><td>The 1st cube stays the same; about half to three quarters of the rest change height</td></tr>
+<tr><th>T</th><td style="white-space:nowrap">01–45</td><td>Serial number within the same H and S</td><td>Neighboring numbers give <b>similar sequences</b> (4–26 of the 99 cubes differ, usually about 8). But there are 3 boundaries where it becomes an almost entirely different sequence</td></tr>
+</table></div>
+
+<h3>Examples</h3>
+<ul>
+  <li><b>Practice the same sequence again and again</b>: keep the same H, S and T. Waiting longer in the menu does not change the sequence.</li>
+  <li><b>Practice slightly different sequences</b>: move T one step at a time.</li>
+  <li><b>Get a completely different sequence</b>: change H or S.</li>
+  <li><b>Anything is fine</b>: any H, S and T just picks one of the 2880 sequences. Nothing goes wrong.</li>
+  <li>Slowdown shifts the sequence (see "Drift Caused by Slowdown" below). CUBE INFO shows whether the sequence actually changed.</li>
+</ul>
+
+<details style="margin:10px 0"><summary>Details (how the numbers are assigned)</summary>
 <ul>
   <li>The timer has 65536 possible values, but the lowest 2 bits are not used in the height calculation, so there are 2880 actually different sequences.</li>
-  <li>The mod ROM identifies these 2880 sequences with the following three values.
-    <ul>
-      <li><b>H (1–16)</b>: the height number of the 1st cube.</li>
-      <li><b>S (A–D)</b>: bits 3–4 (from the bottom) of the timer at the moment of the 1st cube. Since the intervals are multiples of 16, these 2 bits are the same for all 99 cubes. They decide how neighboring height numbers swap.</li>
-      <li><b>T (01–45)</b>: the remaining difference within the same H and S. There are 45, numbered in increasing order of the timer value.</li>
-    </ul></li>
+  <li><b>H</b>: the height number of the 1st cube.</li>
+  <li><b>S</b>: bits 3–4 (from the bottom) of the timer at the moment of the 1st cube. Since the intervals are multiples of 16, these 2 bits are the same for all 99 cubes.</li>
+  <li><b>T</b>: the remaining difference within the same H and S. There are 45, numbered in increasing order of the timer value. Where an upper digit of the timer carries over is where the T "boundaries" are.</li>
   <li>Even counting height numbers that share a height as one, all 2880 sequences are different.</li>
-  <li>We chose H5, S B, T12 in MAME, recorded a full run, and confirmed that all 99 heights match the calculation. The sequence is the same even if you wait a different time in the menu.</li>
+  <li>We chose H5, S B, T12 in MAME, recorded a full run, and confirmed that all 99 heights match the calculation.</li>
 </ul>
+</details>
 
 <h2>Drift Caused by Slowdown (LAG)</h2>
 <ul>
@@ -159,7 +182,7 @@ button{font:inherit;padding:6px 14px;border-radius:8px;border:1px solid var(--ac
   <div class="key"><span style="color:#5aaee8">■ the 2 rightmost (318, 286)</span><span style="color:#1e8cff">■ 254</span><span style="color:#00b8d4">■ 222</span><span style="color:#00c080">■ 190</span><span style="color:#2ecc40">■ x=158</span><span style="color:#9be22d">■ x=126</span><span style="color:#d4b000">■ x=94</span><span style="color:#ff8a00">■ x=62</span><span style="color:#ff1a1a">■ x=30</span><span style="color:var(--sub)">■ does not react</span><span>× where it reacted / vertical lines are the 10 reacting positions</span></div>
 </div>
 
-<h2>View a Sequence</h2>
+<h2 id="view">View a Sequence</h2>
 <div class="panel">
   <div class="ctl">
     <label>H <select id="h"></select></label>
