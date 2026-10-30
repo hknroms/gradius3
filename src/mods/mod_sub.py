@@ -243,6 +243,43 @@ cp_l:   move.w  d1,d0
 cp_e:   move.b  d1,V_CRP.l
         rts
 
+; ---- #53 NO DEATH: 10面の下へ降りる区間（X $800〜$9C0）で、自機を上に行き過ぎないように押さえる ----
+; この区間は画面が自機を追って上下し（$40082 = 8）、X $9C0 で画面の高さが固定される（= 0）。普通は壁に押されて下へ降りるので
+; 画面は一番下（上下 $80）で固定されるが、無敵で上にいると上のまま固定に入り、中ボス（X $1C00）まで化けた画面になる。
+; NO DEATH（ND_FLAG）のときだけ、自機の Y（下から上へ増える）を「目標の画面の高さ + $8000（画面の真ん中）」以下にする。
+; 目標の高さ: X $7F0 で $20000 → X $8C0 で $80（下を押し続けたときと同じ速さ）、その先は $80
+NdDown:
+        tst.b   MBS_RUN.l               ; 改造プレイだけ
+        beq.s   nd_x
+        tst.b   $203e1a.l               ; ND_FLAG
+        beq.s   nd_x
+        cmpi.b  #13,$2039c0.l           ; 10面（地図 13）
+        bne.s   nd_x
+        move.l  $2038de.l,d0
+        lsr.l   #8,d0                   ; X（ドット）
+        cmpi.l  #$7f0,d0
+        bcs.s   nd_x
+        cmpi.l  #$9c0,d0
+        bcc.s   nd_x
+        move.l  #$80,d1                 ; 目標の画面の高さ
+        cmpi.l  #$8c0,d0
+        bcc.s   nd_t
+        move.l  #$8c0,d1                ; ($8C0 − X) × $1FF + $80（0xd0 ドットで $20000 → $80）
+        sub.l   d0,d1
+        mulu    #$27d,d1
+        addi.l  #$80,d1
+nd_t:   addi.l  #$8000,d1               ; 自機の Y の上限
+        lea     $201000.l,a0            ; 1P・2P
+        moveq   #1,d2
+nd_p:   tst.b   (a0)
+        bpl.s   nd_n
+        cmp.l   $c(a0),d1
+        bcc.s   nd_n
+        move.l  d1,$c(a0)
+nd_n:   lea     $80(a0),a0
+        dbf     d2,nd_p
+nd_x:   rts
+
 ; ---- 毎フレーム ----  (解除/ロック/自動ロックはメインCPU側で処理)
 Frame:
         lea     LNPAL.l,a0      ; パレット6 の 6〜15番（CUBE LINE の色と見出しの色）→ 共有RAM $103dec（メインが毎フレーム写す）
@@ -347,7 +384,8 @@ fr_ingame:
         bra.w   fr_nr
 fr_rk:  move.b  #1,V_RKL.l
         jsr     RankDisp.l
-fr_nr:  jsr     HitDisp.l       ; #38 当たり判定の表示
+fr_nr:  jsr     NdDown.l        ; #53 NO DEATH の10面の下へ降りる区間
+        jsr     HitDisp.l       ; #38 当たり判定の表示
         jsr     StChk.l
         jsr     PosChk.l
         jsr     NdDisp.l

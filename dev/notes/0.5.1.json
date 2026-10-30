@@ -4,6 +4,7 @@
   "メニューの MODE に NO DEATH を追加：死なないモードを時間制で遊べる。1クレジット10分（ディップスイッチで5分）。自機を動かせる間だけ時間が減る。残り30秒から画面に TIME が出て、その表示中に START を押すとクレジットを1つ使って +10分（フリープレイはクレジットなし）。0 になるとその場でゲームオーバー。ハイスコアには入らない",
   "NO DEATH のポーズで、装備（SPEED・MISSILE・DOUBLE/LASER・OPTION・SHIELD）を変えられる。MISS で自分から1機やられることもできる（残機は減らない）。最初の START 表示の間に操作の案内を出す",
   "メニューの MODE に CUBE NO DEATH を追加：キューブラッシュを死なない時間制で遊べる（時間と延長は NO DEATH と同じ）",
+  "NO DEATH で10面の下へ降りる区間（X 0800〜09C0）を降りずに上を進むと、画面が上のまま固定されて中ボスまで化けた画面になっていたのを直した。NO DEATH のときだけ、この区間では自機が上に行き過ぎないように押さえ、普通に遊んだときと同じように画面が下へ降りる",
   "ディップスイッチ SW1:8 を ON にすると、NO DEATH の時間が10分→5分、キューブラッシュの残機の上乗せが +5→+2 になる（初期状態は OFF＝10分・+5）",
   "ポーズに HIT DISP を追加（キューブラッシュ以外）：当たり判定を表示する。自機の当たりは赤い枠、敵・弾などの当たりはその場所の8ドットの升目に黄色の点",
   "キューブラッシュのポーズに CUBE FLASH を追加：キューブが反応する少し前から、そのキューブを白く点滅させる。OFF / SHORT / NORMAL / LONG で点滅を始めるタイミングを選ぶ",
@@ -16,6 +17,7 @@
  "verified": [
   "NO DEATH・CUBE NO DEATH が無敵・時間制で始まり、残り30秒の表示・延長・0 でのゲームオーバーが動くこと（MAME）",
   "ディップスイッチ SW1:8 の OFF / ON で、NO DEATH の時間（10分 / 5分）とキューブラッシュの残機（+5 / +2）が切り替わること（MAME）",
+  "NO DEATH で10面の X 0800 から上を押し続けても、X 0C50 で普通の通路の画面になること（MAME）",
   "HIT DISP で、自機の枠が自機に重なり、敵・弾の位置に印が出ること（1面・2面・5面、MAME）",
   "CUBE FLASH で、反応の直前にキューブが点滅し、反応すると元の色に戻ること（MAME）",
   "面が切り替わるときの書き込みの順が、SW1:5 OFF とメニューから始めたときは直した順、SW1:5 ON は純正どおりになること（MAME。もともと MAME ではタイミングの関係で自然には起きない）",
@@ -40,6 +42,7 @@
    "Added NO DEATH to the menu MODE: play without dying on a timer. 10 minutes per credit (5 minutes with a DIP switch). Time only runs while you can move the ship. From 30 seconds left, TIME is shown; press START while it is shown to use one credit and add 10 minutes (no credit needed on free play). At 0 the game ends on the spot. Scores do not enter the high score table",
    "In NO DEATH, the pause menu lets you change equipment (SPEED, MISSILE, DOUBLE/LASER, OPTION, SHIELD), and MISS lets you lose a ship on purpose (your stock does not go down). A short guide to the controls is shown during the first START display",
    "Added CUBE NO DEATH to the menu MODE: Cube Rush without dying, on a timer (same time and extension as NO DEATH)",
+   "Fixed: in NO DEATH, going through the descending part of stage 10 (X 0800–09C0) without going down left the screen stuck high, showing garbled graphics until the mid-boss. In NO DEATH only, the ship is now kept from going too high in this part, so the screen goes down as in normal play",
    "With DIP switch SW1:8 ON, the NO DEATH time becomes 5 minutes instead of 10, and the extra lives in Cube Rush become +2 instead of +5 (default OFF = 10 minutes, +5)",
    "Added HIT DISP to the pause menu (outside Cube Rush): shows hitboxes. The ship's hitbox is a red box; enemies, bullets and so on get yellow dots in the 8-dot cells their hitbox covers",
    "Added CUBE FLASH to the Cube Rush pause menu: a cube blinks white shortly before it reacts. Choose when the blinking starts with OFF / SHORT / NORMAL / LONG",
@@ -52,6 +55,7 @@
   "verified": [
    "NO DEATH and CUBE NO DEATH start invincible on a timer; the 30-second display, the extension and the game over at 0 work (MAME)",
    "DIP switch SW1:8 OFF / ON switches the NO DEATH time (10 / 5 minutes) and the Cube Rush extra lives (+5 / +2) (MAME)",
+   "In NO DEATH, holding up from X 0800 in stage 10 still shows the normal corridor at X 0C50 (MAME)",
    "With HIT DISP, the red box sits on the ship and dots appear where enemies and bullets are (stages 1, 2 and 5, MAME)",
    "With CUBE FLASH, a cube blinks just before it reacts and returns to its color when it reacts (MAME)",
    "When the stage changes, the write order is the fixed one with SW1:5 OFF or when started from the menu, and the original one with SW1:5 ON (MAME; in MAME the bug does not happen by itself because of timing)",
