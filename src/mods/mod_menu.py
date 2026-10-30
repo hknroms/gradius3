@@ -296,6 +296,8 @@ def build_data(base):
     put('PS_CF1', b' CUBE FLASH\0')
     put('PS_HB0', b'>HIT DISP\0')   # #38 当たり判定の表示
     put('PS_HB1', b' HIT DISP\0')
+    put('PS_TM0', b'>TIME\0')       # #55 NO DEATH の残り時間（読むだけ）
+    put('PS_TM1', b' TIME\0')
     # NO DEATH のときだけ出す: 装備（#36 の続き。再開のときにメインがやり直す）と MISS（自分で死ぬ）
     for k, t in [('ES', 'SPEED'), ('EM', 'MISSILE'), ('ED', 'DOUBLE/LASER'), ('EO', 'OPTION'), ('EH', 'SHIELD'), ('X', 'MISS')]:
         put('PS_%s0' % k, b'>' + t.encode() + b'\0'); put('PS_%s1' % k, b' ' + t.encode() + b'\0')
@@ -321,7 +323,8 @@ def build_data(base):
                          ('PS_ES0', 'PS_ES1', 0x203e15, 'EQSPD'), ('PS_EM0', 'PS_EM1', 0x203e16, 0), ('PS_ED0', 'PS_ED1', 0x203e17, 'EQDL'),
                          ('PS_EO0', 'PS_EO1', 0x203e18, 'EQOPT'), ('PS_EH0', 'PS_EH1', 0x203e19, 0), ('PS_X0', 'PS_X1', 0, 0), ('PS_Q0', 'PS_Q1', 0x203f0c, 0), ('PS_K0', 'PS_K1', 0x203f34, 0), ('PS_V0', 'PS_V1', 0x203f1c, 'LVTAB'), ('PS_H0', 'PS_H1', 0x203f3b, 'LHTAB'), ('PS_U0', 'PS_U1', 0x203f33, 0),
                          ('PS_HB0', 'PS_HB1', HB_FLAG, 0),
-                         ('PS_CF0', 'PS_CF1', CF_FLAG, 'CFTAB')]:   # 18 = CUBE FLASH（#48。キューブラッシュだけ）   # 17 = HIT DISP（#38。いつも出す）
+                         ('PS_CF0', 'PS_CF1', CF_FLAG, 'CFTAB'),
+                         ('PS_TM0', 'PS_TM1', 0, 0)]:   # 19 = TIME（#55。NO DEATH のときだけ。値は PDraw が $203E10 から作る）   # 18 = CUBE FLASH（#48。キューブラッシュだけ）   # 17 = HIT DISP（#38。いつも出す）
         blob.extend(struct.pack('>IIII', lab[a], lab[b], f, lab[vt] if vt else 0))
     # STAGE DISP のエリア: 面1〜10 × 12。本来のエリア（英字）だけ（❶〜❹ は使わない＝手前の英字のまま。2026-10-28 管理者）
     #   STLAB = 英字（残りは 0）、STPRG = その開始進行度（メニューの表 PROGTBL と同じ値）
@@ -2163,6 +2166,7 @@ PI_MISS = 11
 PI_CUBE = 12
 PI_HIT  = 17
 PI_CF   = 18
+PI_TIME = 19               ; #55 NO DEATH の残り時間（読むだけ。値は PDraw が作る）
 ; ---- 出す項目の表を作る: いつもの6つ ＋ NO DEATH なら装備と MISS ＋ キューブラッシュならキューブの5つ。d6 = 数 ----
 PMap:   lea     V_PMAP.l,a0
         moveq   #0,d0
@@ -2172,6 +2176,10 @@ NOINV_PM
 pm_b2:  addq.b  #1,d0
         cmpi.b  #PI_EQ,d0
         bcs.s   pm_b
+        tst.b   $203e1a.l       ; TIME（#55）: NO DEATH・CUBE NO DEATH のときだけ、残り時間を読めるように出す
+        beq.s   pm_nt
+        move.b  #PI_TIME,(a0)+
+pm_nt:
         cmpi.b  #2,$203f0b.l    ; HIT DISP（#38）はキューブラッシュ（CUBE NO DEATH も始めると 2）のほかで出す（2026-10-30 管理者）
         beq.s   pm_nh
         move.b  #PI_HIT,(a0)+
@@ -2290,6 +2298,9 @@ pd_lp:  lea     V_PMAP.l,a2
 pd_u:   movem.l d4/a2,-(a7)
         bsr.w   PLine
         movem.l (a7)+,d4/a2
+        lea     V_PMAP.l,a3     ; TIME（#55）は値の場所を持たないので、ここで作って描く
+        cmpi.b  #PI_TIME,0(a3,d4.w)
+        beq.w   pd_tm
         move.l  8(a2),d0
         beq.s   pd_nx
         movea.l d0,a3
@@ -2318,6 +2329,39 @@ pd_nx:  addq.w  #1,d4
         cmp.w   d6,d4
         bcs.w   pd_lp
         rts
+; ---- TIME（#55）: NO DEATH の残りフレーム（$203E10）を 分:秒 にして V_TMP に作る（'>' が ':' として出る）----
+pd_tm:  move.l  $203e10.l,d5
+        addi.l  #59,d5          ; 秒に切り上げ（NdDisp と同じ数え方）
+        cmpi.l  #359999,d5      ; 99:59 で頭打ち（divu があふれないように）
+        bcs.s   pt_ok
+        move.l  #359999,d5
+pt_ok:  divu    #60,d5          ; 下位 = 秒
+        andi.l  #$ffff,d5
+        divu    #60,d5          ; 下位 = 分、上位 = 秒
+        lea     V_TMP.l,a0
+        move.w  d5,d6
+        divu    #10,d6
+        move.b  d6,d7
+        addi.b  #$30,d7
+        move.b  d7,(a0)+        ; 分の十の位
+        swap    d6
+        move.b  d6,d7
+        addi.b  #$30,d7
+        move.b  d7,(a0)+        ; 分の一の位
+        move.b  #$3e,(a0)+      ; '>' = 画面では ':'
+        swap    d5
+        move.w  d5,d6
+        divu    #10,d6
+        move.b  d6,d7
+        addi.b  #$30,d7
+        move.b  d7,(a0)+        ; 秒の十の位
+        swap    d6
+        move.b  d6,d7
+        addi.b  #$30,d7
+        move.b  d7,(a0)+        ; 秒の一の位
+        clr.b   (a0)
+        lea     V_TMP.l,a0
+        bra.w   pd_v
 
 ; ---- ポーズを開いたとき: 装備の項目に、いまの装備を入れる（1P の自機 $201000） ----
 EqRead: lea     $201000.l,a0
