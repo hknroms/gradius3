@@ -2,23 +2,33 @@
  "_how": "配布ページのトップに出る「報告への回答」。Google フォームから報告してくれた方には、こちらから返事を返す手段がないので、ここに書いて気づいてもらう。要らなくなったら手で消す。新しいものを上に書く。",
  "replies": [
   {
-   "issue": 45,
-   "date": "2026-10-30",
-   "title": "出現直後のリザードコアに自爆したら、キューブラッシュのような所から再開した",
-   "body": "原因が分かり、直しました（次の版に入ります）。改造版はキューブラッシュのために9面へ「キューブ地帯の手前」という再開の地点を足していたのですが、それが NORMAL のときにも効いていました。純正どおり、面の最初から再開するようにしました。",
+   "issue": 60,
+   "date": "2026-10-31",
+   "title": "キューブラッシュで、キューブが自機を狙って加速する瞬間にSEを鳴らしたい／出現タイミングのフレーム表",
+   "body": "ご要望ありがとうございます。どちらも検討します。SEは、キューブが反応する瞬間に短い音（装備選択でカーソルを動かしたときの音など）を鳴らせるか調べます（v0.5.1 で入れた CUBE FLASH と同じタイミングです）。解析ページには、出現のタイミングのフレーム表を足す方向で考えています。形になったら、ここと更新履歴でお知らせします。",
    "en": {
-    "title": "Self-destructing on a just-appeared Lizard Core restarted somewhere like Cube Rush",
-    "body": "Found and fixed (it will be in the next version). The mod adds a restart point just before the cube section of stage 9 for Cube Rush, and it was also being used in NORMAL. It now restarts from the beginning of the stage, as in the original."
+    "title": "Play a sound when a cube turns toward the ship and speeds up in Cube Rush / a frame table of when cubes appear",
+    "body": "Thank you for the request. We will look into both. For the sound, we will check whether a short sound (such as the cursor sound on the weapon select screen) can be played at the moment a cube reacts (the same timing as CUBE FLASH added in v0.5.1). For the analysis page, we plan to add a frame table of when cubes appear. We will let you know here and in the update history when they are ready."
    }
   },
   {
-   "issue": 46,
-   "date": "2026-10-30",
-   "title": "敵破壊SEがおかしいものがある（砲台・モアイ）",
-   "body": "調べたところ、改造が原因ではなさそうです。メインCPUからサウンドCPUへ送る音の命令の並びは純正と同じで、改造で変えているのはメニューの曲の音量だけ、ゲーム中の音は同じでした。お手数ですが、同じ MAME で純正のROM（改造なし）でも同じ音になるか確かめて、結果を教えてください。純正でも同じなら、ゲームまたは MAME 側の音の出方ということになります。",
+   "issue": 56,
+   "date": "2026-10-31",
+   "title": "敵破壊SEがおかしいものがある（砲台・モアイ）の続き",
+   "body": "純正のROMでも確かめていただき、ありがとうございました。純正でも同じ鳴り方とのことなので、改造が原因ではない（ゲームまたは MAME の音の出方）として、この件は閉じます。",
    "en": {
-    "title": "Some enemy destruction sounds are off (gun emplacements, Moai)",
-    "body": "From what we could check, this does not look like it is caused by the mod. The sound commands sent from the main CPU to the sound CPU are the same as the original, and the only thing the mod changes is the volume of the menu tune; in-game sounds are identical. If you can, please check whether the same MAME produces the same sound with the genuine (unmodified) ROM and let us know. If it does, it comes from the game or from MAME itself."
+    "title": "Follow-up: some enemy destruction sounds are off (gun emplacements, Moai)",
+    "body": "Thank you for checking with the genuine ROM. Since it sounds the same there, we are closing this as not caused by the mod (it is how the game or MAME produces the sound)."
+   }
+  },
+  {
+   "issue": 45,
+   "date": "2026-10-30",
+   "title": "出現直後のリザードコアに自爆したら、キューブラッシュのような所から再開した",
+   "body": "原因が分かり、v0.5.1 で直しました。改造版はキューブラッシュのために9面へ「キューブ地帯の手前」という再開の地点を足していたのですが、それが NORMAL のときにも効いていました。純正どおり、面の最初から再開するようにしました。",
+   "en": {
+    "title": "Self-destructing on a just-appeared Lizard Core restarted somewhere like Cube Rush",
+    "body": "Found and fixed in v0.5.1. The mod adds a restart point just before the cube section of stage 9 for Cube Rush, and it was also being used in NORMAL. It now restarts from the beginning of the stage, as in the original."
    }
   },
   {
