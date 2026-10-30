@@ -118,6 +118,18 @@ def _hpix(kind):
         if (kind == 1 and i % 4 == 0) or (kind == 3 and i <= 5) or (kind == 4 and i >= 2): p[0][i] = 15
         if kind == 2: p[0][i] = 9                     # 線: つながった線を暗い灰色（色9）で薄く
     return p
+# ---- #38 HIT DISP: 当たり判定の表示（サブだけで描く。メインのコードは使わない）----
+# 当たりの表はメインが毎フレーム、共有RAMのオブジェクト（$101000・$101240〜×54・$102320〜×66、$50 ずつ）から作る（$222AC）:
+#   X = (+8.l >> 8) + +$36.w、Y = (+$C.l >> 8) + +$38.w、半分の幅 +$14.w、半分の高さ +$16.w。先頭の bit7 = 動いている
+# サブも同じ所を読んで描く。自機（$101000）はドット単位の枠（文字 HB_PL〜+5 の 3×2 字に描く）、ほかは升目に印（文字 HB_MARK）
+HB_FLAG = 0x203812     # ON/OFF（共有RAM $103812。どちらの ROM からも参照が無い所。メニューから始めるたびに OFF）
+HB_PL   = 0xe80        # 使う文字: 1〜10面で一度も使われなかった 0xE80〜0xE86（TECH.md「文字の空き」）
+HB_MARK = 0xe86
+HB_PCOL = 14           # パレット6 の色: 14 = 赤（自機の枠）
+HB_MCOL = 12           # 12 = 黄（升目の印）
+def hb_mark_tile():
+    p = [[HB_MCOL if (r % 2 == 0 and i % 2 == 0) else 0 for i in range(8)] for r in range(8)]
+    return _tile(p)
 def line_tiles():
     """文字 0xf00〜0xf42: 縦 (V-1)*9+k / 横 27〜30 / 縦と横の交わり 31+((V-1)*2+(H-1))*9+k"""
     out = bytearray()
@@ -237,6 +249,7 @@ def build_data(base):
     blob.extend(PLUS_GFX)
     al(); lab['BANGGFX'] = base + len(blob)
     blob.extend(BANG_GFX)
+    al(); lab['HBGFX'] = base + len(blob); blob.extend(hb_mark_tile())   # #38 敵・弾の当たりの升目の印（文字 HB_MARK）
     put('PS_C0', b'>CONTINUE\0')
     put('PS_C1', b' CONTINUE\0')
     put('PS_G0', b'>GAME OVER\0')
@@ -256,6 +269,8 @@ def build_data(base):
     put('PS_U0', b'>CUBE HUNTER\0')
     put('PS_U1', b' CUBE HUNTER\0')
     put('PS_ON', b'ON \0')
+    put('PS_HB0', b'>HIT DISP\0')   # #38 当たり判定の表示
+    put('PS_HB1', b' HIT DISP\0')
     # NO DEATH のときだけ出す: 装備（#36 の続き。再開のときにメインがやり直す）と MISS（自分で死ぬ）
     for k, t in [('ES', 'SPEED'), ('EM', 'MISSILE'), ('ED', 'DOUBLE/LASER'), ('EO', 'OPTION'), ('EH', 'SHIELD'), ('X', 'MISS')]:
         put('PS_%s0' % k, b'>' + t.encode() + b'\0'); put('PS_%s1' % k, b' ' + t.encode() + b'\0')
@@ -277,7 +292,8 @@ def build_data(base):
     # ポーズの項目 16B: 選択中の文字列.l 通常の文字列.l 値の場所.l(0=なし) 値の表.l(0=ON/OFF, それ以外=[数.l, 文字列.l...])
     for a, b, f, vt in [('PS_C0', 'PS_C1', 0, 0), ('PS_G0', 'PS_G1', 0, 0), ('PS_I0', 'PS_I1', 0x203f20, 0), ('PS_R0', 'PS_R1', 0x203f0e, 0), ('PS_S0', 'PS_S1', 0x2039c4, 0), ('PS_P0', 'PS_P1', 0x203f2b, 0),
                          ('PS_ES0', 'PS_ES1', 0x203e15, 'EQSPD'), ('PS_EM0', 'PS_EM1', 0x203e16, 0), ('PS_ED0', 'PS_ED1', 0x203e17, 'EQDL'),
-                         ('PS_EO0', 'PS_EO1', 0x203e18, 'EQOPT'), ('PS_EH0', 'PS_EH1', 0x203e19, 0), ('PS_X0', 'PS_X1', 0, 0), ('PS_Q0', 'PS_Q1', 0x203f0c, 0), ('PS_K0', 'PS_K1', 0x203f34, 0), ('PS_V0', 'PS_V1', 0x203f1c, 'LVTAB'), ('PS_H0', 'PS_H1', 0x203f3b, 'LHTAB'), ('PS_U0', 'PS_U1', 0x203f33, 0)]:
+                         ('PS_EO0', 'PS_EO1', 0x203e18, 'EQOPT'), ('PS_EH0', 'PS_EH1', 0x203e19, 0), ('PS_X0', 'PS_X1', 0, 0), ('PS_Q0', 'PS_Q1', 0x203f0c, 0), ('PS_K0', 'PS_K1', 0x203f34, 0), ('PS_V0', 'PS_V1', 0x203f1c, 'LVTAB'), ('PS_H0', 'PS_H1', 0x203f3b, 'LHTAB'), ('PS_U0', 'PS_U1', 0x203f33, 0),
+                         ('PS_HB0', 'PS_HB1', HB_FLAG, 0)]:   # 17 = HIT DISP（#38。いつも出す）
         blob.extend(struct.pack('>IIII', lab[a], lab[b], f, lab[vt] if vt else 0))
     # STAGE DISP のエリア: 面1〜10 × 12。本来のエリア（英字）だけ（❶〜❹ は使わない＝手前の英字のまま。2026-10-28 管理者）
     #   STLAB = 英字（残りは 0）、STPRG = その開始進行度（メニューの表 PROGTBL と同じ値）
@@ -664,6 +680,7 @@ mi_ah:  move.b  (a0),(a1)+
         dbf     d0,mi_ah
         clr.b   $203f0e.l       ; RANK DISP・CUBE INFO はポーズで切り替える（始めは OFF）
         clr.b   $203f2b.l       ; POS DISP
+        clr.b   HB_FLAG.l       ; HIT DISP（#38）
         clr.b   V_SIF.l         ; STAGE DISP（#30）
         clr.b   $203f1c.l       ; CUBE LINE V
         clr.b   $203f3b.l       ; CUBE LINE H
@@ -1815,6 +1832,238 @@ LnAdr:  move.w  d0,d7
         rts
 ln_r:   rts
 
+; ---- #38 HIT DISP: 当たり判定の表示（毎フレーム。ポーズ中は何もしない）----
+; 前のフレームに置いた升目を消してから、今の当たりを描く。消すのは、まだ自分の文字が残っている升目だけ
+; 置くのは段 HB_R0〜HB_R1（スコア・残機・ゲージの段は避ける）で、空白の升目だけ（ゲームの文字は消さない）
+HB_FLAG = $203812       ; ON/OFF（共有RAM $103812）
+HB_R0   = 4
+HB_R1   = 27
+HB_ATTR = $dc           ; パレット6・文字の上位 $e00（$E80〜 の下位は $80〜）
+HB_GFX  = $29d000       ; 文字 $E80 の絵（$280000 + $E80*32）
+HB_OX   = 96            ; 画面の x → 文字の面の x（桁 = (x + 96) / 8）
+HB_YC   = 254           ; 文字の面の y = HB_YC − 当たりの Y（画面の y = 238 − Y、段 = (y + 16) / 8）
+HB_MAX  = 150
+V_HBN   = $1034d0       ; 置いた升目の数.w（$1034c0〜$1034c4 はエディット画面の変数）
+V_HBL   = $1034d2       ; 置いた升目（TILEA からの位置.w）× HB_MAX（〜$1035fd。$103600〜 はメニュー中に使う）
+HitDisp:
+        cmpi.b  #1,MBS_PAUS.l
+        beq.w   hd_r
+        lea     TILEA.l,a2
+        lea     $250000.l,a6    ; 文字の番号の側（TILEA + $4000）
+        lea     V_HBL.l,a0
+        move.w  V_HBN.l,d0
+        clr.w   V_HBN.l
+        cmpi.w  #HB_MAX,d0      ; 電源を入れた直後（面の開始で消すまで）は不定値なので、多すぎたら消さない
+        bls.s   hd_e2
+        moveq   #0,d0
+        bra.s   hd_e2
+hd_e1:  move.w  (a0)+,d1
+        cmpi.b  #HB_ATTR,1(a2,d1.w)
+        bne.s   hd_e2
+        move.b  1(a6,d1.w),d2
+        subi.b  #$80,d2
+        cmpi.b  #6,d2
+        bhi.s   hd_e2
+        clr.b   1(a2,d1.w)
+        move.b  #$10,1(a6,d1.w)
+hd_e2:  dbf     d0,hd_e1
+        tst.b   MBS_RUN.l
+        beq.w   hd_r
+        tst.b   HB_FLAG.l
+        beq.w   hd_r
+        lea     HB_GFX.l,a1     ; 自機の6字を消し、印の字を入れる
+        moveq   #47,d0
+hd_c:   clr.l   (a1)+
+        dbf     d0,hd_c
+        lea     HBGFX.l,a0
+        moveq   #7,d0
+hd_m:   move.l  (a0)+,(a1)+
+        dbf     d0,hd_m
+        move.l  $2038de.l,d4    ; 画面の位置（ドット）
+        lsr.l   #8,d4
+        move.l  $2038e2.l,d5
+        lsr.l   #8,d5
+        lea     $202320.l,a3    ; 敵・弾など
+        moveq   #$41,d6
+        bsr.w   hd_lst
+        lea     $201240.l,a3    ; 自機の側（オプション・自機の弾など）
+        moveq   #$35,d6
+        bsr.w   hd_lst
+        lea     $201000.l,a3    ; 自機: ドット単位の枠
+        tst.b   (a3)
+        bpl.w   hd_r
+        bsr.w   hd_box          ; d0=左 d1=右 d2=上 d3=下（文字の面のドット）
+        move.w  d0,d6           ; 3×2 字の左上の桁・段
+        asr.w   #3,d6
+        move.w  d2,d7
+        asr.w   #3,d7
+        movea.w d6,a4
+        movea.w d7,a5
+        lsl.w   #3,d6
+        lsl.w   #3,d7
+        sub.w   d6,d0
+        sub.w   d6,d1
+        sub.w   d7,d2
+        sub.w   d7,d3
+        movem.w d0-d3,-(a7)     ; (a7)=左 2=右 4=上 6=下
+        move.w  (a7),d6
+hd_h:   move.w  d6,d0
+        move.w  4(a7),d1
+        bsr.w   hd_pix
+        move.w  d6,d0
+        move.w  6(a7),d1
+        bsr.w   hd_pix
+        addq.w  #1,d6
+        cmp.w   2(a7),d6
+        ble.s   hd_h
+        move.w  4(a7),d6
+hd_v:   move.w  (a7),d0
+        move.w  d6,d1
+        bsr.w   hd_pix
+        move.w  2(a7),d0
+        move.w  d6,d1
+        bsr.w   hd_pix
+        addq.w  #1,d6
+        cmp.w   6(a7),d6
+        ble.s   hd_v
+        addq.l  #8,a7
+        moveq   #-128,d7        ; 文字 $E80〜$E85 を 3×2 に置く
+        moveq   #0,d6
+hd_pr:  moveq   #0,d5
+hd_pc:  move.w  a4,d0
+        add.w   d5,d0
+        move.w  a5,d1
+        add.w   d6,d1
+        bsr.w   hd_put
+        addq.b  #1,d7
+        addq.w  #1,d5
+        cmpi.w  #3,d5
+        bcs.s   hd_pc
+        addq.w  #1,d6
+        cmpi.w  #2,d6
+        bcs.s   hd_pr
+hd_r:   rts
+
+; a3 のオブジェクトの当たりの箱 → d0=左 d1=右 d2=上 d3=下（文字の面のドット。d4/d5 = 画面の位置）
+hd_box: move.l  8(a3),d0
+        lsr.l   #8,d0
+        add.w   $36(a3),d0
+        sub.w   d4,d0
+        addi.w  #HB_OX,d0
+        move.l  $c(a3),d2
+        lsr.l   #8,d2
+        add.w   $38(a3),d2
+        sub.w   d5,d2
+        neg.w   d2              ; 当たりの Y は下から上へ増える → 文字の面の y = HB_YC − Y
+        addi.w  #HB_YC,d2
+        move.w  d0,d1
+        sub.w   $14(a3),d0
+        add.w   $14(a3),d1
+        move.w  d2,d3
+        sub.w   $16(a3),d2
+        add.w   $16(a3),d3
+        rts
+
+; 表（a3 から d6+1 個、$50 ずつ）の当たりの升目に印を置く
+hd_lst: tst.b   (a3)
+        bpl.w   hl_n
+        movem.l d4-d6,-(a7)
+        bsr.s   hd_box
+        asr.w   #3,d0
+        asr.w   #3,d1
+        asr.w   #3,d2
+        asr.w   #3,d3
+        cmpi.w  #12,d0
+        bge.s   hl_1
+        moveq   #12,d0
+hl_1:   cmpi.w  #51,d1
+        ble.s   hl_2
+        moveq   #51,d1
+hl_2:   cmpi.w  #HB_R0,d2
+        bge.s   hl_3
+        moveq   #HB_R0,d2
+hl_3:   cmpi.w  #HB_R1,d3
+        ble.s   hl_4
+        moveq   #HB_R1,d3
+hl_4:   movea.w d0,a4
+        movea.w d1,a5
+        moveq   #-122,d7        ; 文字 $E86（印）
+hl_r:   cmp.w   d3,d2
+        bgt.s   hl_x
+        move.w  a4,d4
+hl_c:   cmp.w   a5,d4
+        bgt.s   hl_rn
+        move.w  d4,d0
+        move.w  d2,d1
+        bsr.s   hd_put
+        addq.w  #1,d4
+        bra.s   hl_c
+hl_rn:  addq.w  #1,d2
+        bra.s   hl_r
+hl_x:   movem.l (a7)+,d4-d6
+hl_n:   lea     $50(a3),a3
+        dbf     d6,hd_lst
+        rts
+
+; 升目（d0=桁 d1=段）に文字（下位 d7）を置く。空白の升目だけ。置いた所を V_HBL に覚える。a1 を壊す
+hd_put: cmpi.w  #HB_R0,d1
+        blt.s   hp_x
+        cmpi.w  #HB_R1,d1
+        bgt.s   hp_x
+        cmpi.w  #12,d0
+        blt.s   hp_x
+        cmpi.w  #51,d0
+        bgt.s   hp_x
+        cmpi.w  #HB_MAX,V_HBN.l
+        bcc.s   hp_x
+        move.w  d1,-(a7)
+        lsl.w   #6,d1
+        add.w   d0,d1
+        add.w   d1,d1
+        tst.b   1(a2,d1.w)
+        bne.s   hp_y
+        cmpi.b  #$10,1(a6,d1.w)
+        bne.s   hp_y
+        move.b  #HB_ATTR,1(a2,d1.w)
+        move.b  d7,1(a6,d1.w)
+        movea.w V_HBN.l,a1
+        adda.w  a1,a1
+        adda.l  #V_HBL,a1
+        move.w  d1,(a1)
+        addq.w  #1,V_HBN.l
+hp_y:   move.w  (a7)+,d1
+hp_x:   rts
+
+; 自機の枠の1ドット（d0=x 0〜23, d1=y 0〜15。3×2 字の中）を赤に。a1 を壊す
+hd_pix: cmpi.w  #23,d0
+        bhi.s   hx_x
+        cmpi.w  #15,d1
+        bhi.s   hx_x
+        movem.w d0-d2,-(a7)
+        move.w  d1,d2           ; 字の番号 = (y/8)*3 + x/8
+        lsr.w   #3,d2
+        mulu    #3,d2
+        move.w  d0,-(a7)
+        lsr.w   #3,d0
+        add.w   d0,d2
+        lsl.w   #5,d2           ; ×32
+        andi.w  #7,d1
+        lsl.w   #2,d1
+        add.w   d1,d2
+        move.w  (a7)+,d0
+        move.w  d0,d1
+        andi.w  #7,d0
+        lsr.w   #1,d0
+        add.w   d0,d2
+        lea     HB_GFX.l,a1
+        btst    #0,d1
+        bne.s   hx_lo
+        ori.b   #$e0,0(a1,d2.w)
+        bra.s   hx_e
+hx_lo:  ori.b   #$0e,0(a1,d2.w)
+hx_e:   movem.w (a7)+,d0-d2
+hx_x:   rts
+
 V_PST   = $103450
 V_PSEL  = $103451
 V_PPIN  = $103452
@@ -1831,6 +2080,7 @@ PW      = 21
 PI_EQ   = 6                ; PTAB の装備の項目の始め（6〜10 = 装備、11 = MISS）。12〜16 = キューブラッシュの項目
 PI_MISS = 11
 PI_CUBE = 12
+PI_HIT  = 17
 ; ---- 出す項目の表を作る: いつもの6つ ＋ NO DEATH なら装備と MISS ＋ キューブラッシュならキューブの5つ。d6 = 数 ----
 PMap:   lea     V_PMAP.l,a0
         moveq   #0,d0
@@ -1838,6 +2088,7 @@ pm_b:   move.b  d0,(a0)+
         addq.b  #1,d0
         cmpi.b  #PI_EQ,d0
         bcs.s   pm_b
+        move.b  #PI_HIT,(a0)+   ; HIT DISP（#38）はいつも出す
         cmpi.b  #1,$203f0b.l    ; 装備と MISS は NO DEATH のときだけ（2026-10-29 管理者。INVINCIBLE はリリースで外すので）
         bne.s   pm_c
 pm_e:   move.b  d0,(a0)+

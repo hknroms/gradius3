@@ -251,7 +251,8 @@ fr_ingame:
         bra.w   fr_nr
 fr_rk:  move.b  #1,V_RKL.l
         jsr     RankDisp.l
-fr_nr:  jsr     StChk.l
+fr_nr:  jsr     HitDisp.l       ; #38 当たり判定の表示
+        jsr     StChk.l
         jsr     PosChk.l
         jsr     NdDisp.l
         jsr     NdMsg.l
