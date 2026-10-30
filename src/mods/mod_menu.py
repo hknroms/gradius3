@@ -302,12 +302,14 @@ def build_data(base):
     put('ED_1', b'DOUBLE\0'); put('ED_2', b'LASER \0'); put('ED_0', b'OFF   \0')
     put('PS_OFF', b'OFF\0')
     # ポーズの項目: 選択中の文字列.l 通常の文字列.l ON/OFF の場所.l(0=なし)
-    put('PS_V0', b'>CUBE LINE V\0')
-    put('PS_V1', b' CUBE LINE V\0')
+    put('PS_V0', b'>CUBE LINE\0')     # #49 縦と横をまとめた（値は縦の値。横はこれに合わせる）
+    put('PS_V1', b' CUBE LINE\0')
     put('PS_H0', b'>CUBE LINE H\0')
     put('PS_H1', b' CUBE LINE H\0')
+    put('CF_0', b'OFF   \0'); put('CF_1', b'SHORT \0'); put('CF_2', b'NORMAL\0'); put('CF_3', b'LONG  \0')   # #49 CUBE FLASH
     put('LV_0', b'OFF  \0'); put('LV_1', b'ROUGH\0'); put('LV_2', b'FINE \0'); put('LV_3', b'EDGE \0'); put('LH_2', b'LINE \0')
     al(); lab['LVTAB'] = base + len(blob); blob.extend(struct.pack('>IIIII', 4, lab['LV_0'], lab['LV_1'], lab['LV_2'], lab['LV_3']))
+    al(); lab['CFTAB'] = base + len(blob); blob.extend(struct.pack('>IIIII', 4, lab['CF_0'], lab['CF_1'], lab['CF_2'], lab['CF_3']))
     al(); lab['LHTAB'] = base + len(blob); blob.extend(struct.pack('>IIIII', 4, lab['LV_0'], lab['LV_1'], lab['LH_2'], lab['LV_3']))
     al(); lab['EQSPD'] = base + len(blob); blob.extend(struct.pack('>I', 6) + b''.join(struct.pack('>I', lab['EN_%d' % i]) for i in range(6)))
     al(); lab['EQOPT'] = base + len(blob); blob.extend(struct.pack('>I', 5) + b''.join(struct.pack('>I', lab['EN_%d' % i]) for i in range(5)))
@@ -318,7 +320,7 @@ def build_data(base):
                          ('PS_ES0', 'PS_ES1', 0x203e15, 'EQSPD'), ('PS_EM0', 'PS_EM1', 0x203e16, 0), ('PS_ED0', 'PS_ED1', 0x203e17, 'EQDL'),
                          ('PS_EO0', 'PS_EO1', 0x203e18, 'EQOPT'), ('PS_EH0', 'PS_EH1', 0x203e19, 0), ('PS_X0', 'PS_X1', 0, 0), ('PS_Q0', 'PS_Q1', 0x203f0c, 0), ('PS_K0', 'PS_K1', 0x203f34, 0), ('PS_V0', 'PS_V1', 0x203f1c, 'LVTAB'), ('PS_H0', 'PS_H1', 0x203f3b, 'LHTAB'), ('PS_U0', 'PS_U1', 0x203f33, 0),
                          ('PS_HB0', 'PS_HB1', HB_FLAG, 0),
-                         ('PS_CF0', 'PS_CF1', CF_FLAG, 0)]:   # 18 = CUBE FLASH（#48。キューブラッシュだけ）   # 17 = HIT DISP（#38。いつも出す）
+                         ('PS_CF0', 'PS_CF1', CF_FLAG, 'CFTAB')]:   # 18 = CUBE FLASH（#48。キューブラッシュだけ）   # 17 = HIT DISP（#38。いつも出す）
         blob.extend(struct.pack('>IIII', lab[a], lab[b], f, lab[vt] if vt else 0))
     # STAGE DISP のエリア: 面1〜10 × 12。本来のエリア（英字）だけ（❶〜❹ は使わない＝手前の英字のまま。2026-10-28 管理者）
     #   STLAB = 英字（残りは 0）、STPRG = その開始進行度（メニューの表 PROGTBL と同じ値）
@@ -1324,8 +1326,15 @@ kc_l:   tst.b   (a0)
         beq.s   kc_nf
         tst.b   $2a(a0)
         bne.s   kc_nf
-        cmpi.w  #CF_N,$3a(a0)
-        bhi.s   kc_nf
+        moveq   #0,d0           ; #49 光らせ始める時間（SHORT / NORMAL / LONG）
+        move.b  V_CFW.l,d0
+        add.w   d0,d0
+        lea     CF_NT.l,a4
+        move.w  0(a4,d0.w),d0
+        cmp.w   $3a(a0),d0
+        bcs.s   kc_nf
+        btst    #1,$203951.l    ; 点滅（FRAMECNT の下位）: 2フレーム白・2フレーム元の色
+        bne.s   kc_nf
         move.l  8(a0),d0        ; 画面の中で反応するキューブだけ（反応する x が 8 以上）
         sub.l   $2038de.l,d0
         asr.l   #8,d0
@@ -1417,6 +1426,7 @@ kc_none:
         clr.b   $203ed4.l
         rts
 KC_TH:  dc.w    46,78,110,142,174,206,238,270
+CF_NT:  dc.w    0,8,16,30       ; #49 CUBE FLASH の値（OFF/SHORT/NORMAL/LONG）→ 反応の何フレーム前から点滅させるか
 
 RankDisp:                       ; 2段目の右寄せ「RANK:10」（右端 col 50 = T の数字の右端）
         move.w  FRAMECNT.l,d0   ; 4フレームに1回
@@ -1774,6 +1784,7 @@ V_LNL   = $103732               ; 描いてある組み合わせ+1（0 = 何も�
 LNROW0  = 5                     ; 縦線の段 5〜27（スコア・ランク・位置の段とゲージの段は避ける）
 LNROW1  = 27
 CubeLine:
+        move.b  $203f1c.l,$203f3b.l     ; #49 横はいつも縦と同じ（OFF / ROUGH / FINE=LINE / EDGE）
         cmpi.b  #2,$203f0b.l
         bne.w   ln_r
         cmpi.b  #1,MBS_PAUS.l   ; ポーズ中は描かない（ポーズの窓と重なるので）
@@ -2168,8 +2179,10 @@ pm_e:   move.b  d0,(a0)+
 pm_c:   cmpi.b  #2,$203f0b.l
         bne.s   pm_x
         moveq   #PI_CUBE,d0
-pm_k:   move.b  d0,(a0)+
-        addq.b  #1,d0
+pm_k:   cmpi.b  #PI_CUBE+3,d0   ; CUBE LINE H は出さない（#49。CUBE LINE にまとめた）
+        beq.s   pm_k2
+        move.b  d0,(a0)+
+pm_k2:  addq.b  #1,d0
         cmpi.b  #PI_CUBE+5,d0
         bcs.s   pm_k
         move.b  #PI_CF,(a0)+    ; CUBE FLASH（#48）
