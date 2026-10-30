@@ -217,6 +217,17 @@ button.gh{background:transparent;color:var(--acc)}
 </table></div>
 <div class="sub" style="margin-top:6px">34個目以降も同じ順でくり返します（例：34・35個目＝2・3個目と同じ）。32個のうち、反応しないのは8個、自機の後ろから来るのは6個です。MAME で99個すべての反応の瞬間と位置を記録し、この表どおりであることを確かめています。</div></div>
 
+<h2 id="timing">出現と反応のフレーム表</h2>
+<p>99個それぞれが<b>出るフレーム</b>と<b>反応する（自機へ向きを決める）フレーム</b>です。どちらも1個目が出たフレームを 0 として数えます（ゲームの処理が進んだフレーム。処理落ちがあればその分だけ後ろへずれます）。反応のフレーム ＝ 出るフレーム ＋ 上の表の待ち時間です。</p>
+<ul>
+  <li>出る順と反応する順は同じではありません（待ち時間が個ごとに違うため、後から出たキューブが先に反応することがあります）。下の「反応する順」の表が、反応の間隔（リズム）です。</li>
+  <li>反応しないキューブ（待ち時間176フレーム以上）は「—」です。</li>
+</ul>
+<details style="margin:10px 0" open><summary>出る順（1〜99個目）</summary>
+<div class="panel"><div style="overflow-x:auto" id="tmA"></div></div></details>
+<details style="margin:10px 0"><summary>反応する順（リズム）</summary>
+<div class="panel"><div style="overflow-x:auto" id="tmB"></div></div></details>
+
 <h2>シミュレーター</h2>
 <div class="panel">
   <div class="sub">自機の位置とランクを決めて、99個のキューブがどう流れてどこで反応するかを動かして見られます。再生中は<b>キーボードの矢印キー</b>、<b>ゲームパッドの十字キー（スティック）</b>、または<b>図の下のパッド（または図の中）をなぞる</b>と自機を動かせます（なぞった分だけ自機が動くので、自機を指で隠さずに操作できます）（キューブはゲームと同じく、反応した瞬間の自機の位置へ向かいます）。止めているときは図の中をクリック（タップ）すると自機がそこへ移ります。キューブ同士・地形にくっつく動きは省いています（画面の左・上下の端でくっつき、右へ抜けたものは消えます）。</div>
@@ -402,6 +413,18 @@ window.addEventListener('keydown',e=>{if(e.key.startsWith('Arrow')&&playing){key
 window.addEventListener('keyup',e=>{if(e.key.startsWith('Arrow'))keys[e.key]=false});
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{render();draw()});
 resetPath();render();
+
+// #61 出現と反応のフレーム表（D と W から作る）
+(function(){
+  const R=D.map((d,i)=>{const n=i+1,w=W[(n>>1)&15];return {n,f:d,w,r:w<176?d+w:null}});
+  let a='<table class="num"><tr><th>何個目</th><th>出る</th><th>前から</th><th>待ち</th><th>反応</th></tr>';
+  R.forEach((c,i)=>{a+=`<tr><td>${c.n}</td><td>${c.f}</td><td>${i?c.f-R[i-1].f:'—'}</td><td>${c.w}</td><td>${c.r===null?'—':c.r}</td></tr>`});
+  $('tmA').innerHTML=a+'</table>';
+  const S=R.filter(c=>c.r!==null).sort((x,y)=>x.r-y.r||x.n-y.n);
+  let b='<table class="num"><tr><th>順</th><th>反応</th><th>前から</th><th>何個目</th></tr>';
+  S.forEach((c,i)=>{b+=`<tr><td>${i+1}</td><td>${c.r}</td><td>${i?c.r-S[i-1].r:'—'}</td><td>${c.n}</td></tr>`});
+  $('tmB').innerHTML=b+`</table><div class="sub" style="margin-top:6px">反応するのは ${S.length} 個。同じフレームに2個反応するところは「前から」が 0 です。</div>`;
+})();
 </script>
 </main>
 <script>

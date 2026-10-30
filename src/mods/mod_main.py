@@ -90,7 +90,7 @@ ANY = {'rom', 'shr', 'mrm'}
 def chunk(name, src, where='any'):
     CHUNKS.append((name, src, {'rom'} if where == 'rom' else set(ANY) if where == 'any' else where))
 COLD = ['LoadW', 'EdLR', 'TypeBeg', 'TypeGrey', 'ApplyStart', 'ApplyStage', 'NextStg', 'NextPos', 'BossSet', 'PendB',
-        'CmdCnt', 'Command', 'AreaTbl', 'EvPtr', 'Die', 'ShPal', 'StageHook', 'ModState', 'PalCopy']
+        'CmdCnt', 'Command', 'AreaTbl', 'EvPtr', 'Die', 'ShPal', 'StageHook', 'ModState', 'EndSkip', 'PalCopy']
 
 # 毎フレーム（フレームの処理の最初。0x1d1e の jsr $33b8 を置き換え）: 入力の写し・スコアの描き直し・見出しの色
 chunk('StubIn', """
@@ -644,6 +644,19 @@ cs_x:   move.b  $40032.l,d5
         rts
 """)
 # メニューの背景: サブが共有RAM $102000 に置いたスプライトの色(256語)をパレット $80200〜 へ（$103e34 が合図）
+# #63 エンディングのスキップ（alamone さんの申し出⑤）: 改造プレイ（メニューから始めた）だけ、エンディング中に 1P START で飛ばす。
+# 状態7（$3C28）の入り口。エンディングは状態7の小状態0（$4002B=0）・10面（$101051=9）で $2FF80 が回し、その中の段階 $4002D（0〜$12）で進む。
+# 段階 1 から先で START が押されたら、最後の段階 $12（$3085C: オプション等を戻し・物体と文字の面を消して次の周へ）へ飛ばす。
+# 段階 0（オプションなどを $43900 に控える）は飛ばさない。状態7はめったに通らないので隙間の列に置く
+chunk('EndSkip', """
+EndSkip: tst.b  $103e2e.l      ; サブが立てる: 改造プレイ・10面・1P START を押している（場所が足りないので条件はサブで作る）
+        beq.s   es_x
+        lea     $4002d.l,a6     ; a6 は $3C28 が使い直す
+        tst.b   (a6)            ; 段階 0 は飛ばさない（段階は 0〜$12 だけ。$12 に $12 を書いても同じ）
+        beq.s   es_x
+        move.b  #$12,(a6)
+es_x:   jmp     $3c28.l
+""")
 chunk('PalCopy', """
 PalCopy: tst.b  $103e34.l
         beq.s   pc_r
@@ -1146,6 +1159,7 @@ def apply(rom):
     rom.put('main', 0x154aa, J('EvPtr'), 'evptr', expect=bytes.fromhex('23ce00042e00'))
     rom.put('main', 0x4cfc, J('AreaTbl'), 'areatbl', expect=bytes.fromhex('4df9000054fe'))
     rom.put('main', 0x28ec + 2*4, lab['StageHook'].to_bytes(4, 'big'), 'stagehook', expect=bytes.fromhex('00003790'))
+    rom.put('main', 0x28ec + 7*4, lab['EndSkip'].to_bytes(4, 'big'), 'endskip', expect=bytes.fromhex('00003c28'))   # #63
     rom.put('main', 0x28ec + 5*4, lab['PlayHook'].to_bytes(4, 'big'), 'playhook', expect=bytes.fromhex('00003a24'))
     rom.put('main', 0x15ce, lab['LivHk'].to_bytes(4, 'big'), 'lives-tbl', expect=bytes.fromhex('00001a72'))
     rom.put('main', 0x17fe, J('LivHk'), 'lives-1p', expect=bytes.fromhex('4eb900001a72'))

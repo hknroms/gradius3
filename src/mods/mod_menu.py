@@ -123,7 +123,7 @@ def _hpix(kind):
 # 当たりの表はメインが毎フレーム、共有RAMのオブジェクト（$101000・$101240〜×54・$102320〜×66、$50 ずつ）から作る（$222AC）:
 #   X = (+8.l >> 8) + +$36.w、Y = (+$C.l >> 8) + +$38.w、半分の幅 +$14.w、半分の高さ +$16.w。先頭の bit7 = 動いている
 # サブも同じ所を読んで描く。自機（$101000）はドット単位の枠（文字 HB_PL〜+5 の 3×2 字に描く）、ほかは升目に印（文字 HB_MARK）
-HB_FLAG = 0x203812     # ON/OFF（共有RAM $103812。どちらの ROM からも参照が無い所。メニューから始めるたびに OFF）
+HB_FLAG = 0x203e1b     # ON/OFF（共有RAM $103E1B。ゲームが消さない所。#57 で $103812 から移した。メニューから始めるたびに OFF）
 HB_PL   = 0xe80        # 使う文字: 1〜10面で一度も使われなかった 0xE80〜0xE86（TECH.md「文字の空き」）
 HB_MARK = 0xe86
 HB_PCOL = 14           # パレット6 の色: 14 = 赤（自機の枠）
@@ -158,7 +158,7 @@ def line_pal():
 
 # ---- CUBE FLASH（#48）: 反応する少し前から反応するまで、そのキューブを白っぽく光らせる。
 # 色は CUBE COLOR の9つ目（灰色＝反応しない）の枠を白に替えて使う（CUBE FLASH が ON の間、反応しないキューブは元の色のまま）
-CF_FLAG = 0x203813     # ON/OFF（共有RAM $103813。メニューから始めるたびに OFF）
+CF_FLAG = 0x203ed7     # ON/OFF（共有RAM $103ED7。#57：$103813 は始め直しでゲームが消すので移した。メニューから始めるたびに OFF）
 CF_N    = 12           # 反応の何フレーム前から光らせるか
 def _white_pal():
     P = _stage9_pal()
@@ -500,7 +500,7 @@ da_nc:  move.w  #%(colcur)d,d0
         bra.w   da_next
 da_val: jsr     ValCol.l
         move.w  V_Y.l,d1
-        moveq   #11,d7
+        moveq   #12,d7          ; 13桁（CUBE NO DEATH が13文字。#58）
         jsr     ClrFld.l
         moveq   #0,d0
         move.b  7(a5),d0
@@ -719,7 +719,7 @@ mi_ah:  move.b  (a0),(a1)+
         clr.b   $203f3b.l       ; CUBE LINE H
         clr.b   $203f0c.l
         clr.b   $203f34.l       ; CUBE COLOR
-        clr.b   $203813.l       ; CUBE FLASH（#48）
+        clr.b   $203ed7.l       ; CUBE FLASH（#48・#57）
         clr.b   $203f33.l       ; CUBE HUNTER（始めは OFF = 出さない）
         jsr     ClrAll.l
         jsr     MbgInit.l
@@ -1919,7 +1919,7 @@ ln_r:   rts
 ; ---- #38 HIT DISP: 当たり判定の表示（毎フレーム。ポーズ中は何もしない）----
 ; 前のフレームに置いた升目を消してから、今の当たりを描く。消すのは、まだ自分の文字が残っている升目だけ
 ; 置くのは段 HB_R0〜HB_R1（スコア・残機・ゲージの段は避ける）で、空白の升目だけ（ゲームの文字は消さない）
-HB_FLAG = $203812       ; ON/OFF（共有RAM $103812）
+HB_FLAG = $203e1b       ; ON/OFF（共有RAM $103E1B。#57）
 HB_R0   = 4
 HB_R1   = 27
 HB_ATTR = $dc           ; パレット6・文字の上位 $e00（$E80〜 の下位は $80〜）
@@ -2196,10 +2196,12 @@ pm_c:   cmpi.b  #2,$203f0b.l
 pm_k:   cmpi.b  #PI_CUBE+3,d0   ; CUBE LINE H は出さない（#49。CUBE LINE にまとめた）
         beq.s   pm_k2
         move.b  d0,(a0)+
+        cmpi.b  #PI_CUBE+1,d0   ; CUBE FLASH（#48）は CUBE COLOR の下・CUBE LINE の上（#57）
+        bne.s   pm_k2
+        move.b  #PI_CF,(a0)+
 pm_k2:  addq.b  #1,d0
         cmpi.b  #PI_CUBE+5,d0
         bcs.s   pm_k
-        move.b  #PI_CF,(a0)+    ; CUBE FLASH（#48）
 pm_x:   move.l  a0,d6
         subi.l  #V_PMAP,d6
         move.b  d6,V_PCNT.l
