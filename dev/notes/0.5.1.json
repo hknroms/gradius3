@@ -1,0 +1,72 @@
+{
+ "title": "NO DEATH モード・CUBE NO DEATH モード／当たり判定の表示（HIT DISP）／CUBE FLASH／面クリア後の即死を修正／INVINCIBLE を外した",
+ "changes": [
+  "メニューの MODE に NO DEATH を追加：死なないモードを時間制で遊べる。1クレジット10分（ディップスイッチで5分）。自機を動かせる間だけ時間が減る。残り30秒から画面に TIME が出て、その表示中に START を押すとクレジットを1つ使って +10分（フリープレイはクレジットなし）。0 になるとその場でゲームオーバー。ハイスコアには入らない",
+  "NO DEATH のポーズで、装備（SPEED・MISSILE・DOUBLE/LASER・OPTION・SHIELD）を変えられる。MISS で自分から1機やられることもできる（残機は減らない）。最初の START 表示の間に操作の案内を出す",
+  "メニューの MODE に CUBE NO DEATH を追加：キューブラッシュを死なない時間制で遊べる（時間と延長は NO DEATH と同じ）",
+  "ディップスイッチ SW1:8 を ON にすると、NO DEATH の時間が10分→5分、キューブラッシュの残機の上乗せが +5→+2 になる（初期状態は OFF＝10分・+5）",
+  "ポーズに HIT DISP を追加（キューブラッシュ以外）：当たり判定を表示する。自機の当たりは赤い枠、敵・弾などの当たりはその場所の8ドットの升目に黄色の点",
+  "キューブラッシュのポーズに CUBE FLASH を追加：キューブが反応する少し前から、そのキューブを白く点滅させる。OFF / SHORT / NORMAL / LONG で点滅を始めるタイミングを選ぶ",
+  "キューブラッシュのポーズの CUBE LINE V と CUBE LINE H を CUBE LINE 1つにまとめた（縦と横をいつも両方出す）",
+  "面クリアの直後に、何もない所で自機がやられることがあるのを直した（純正のバグ。面が切り替わる瞬間に、地形の字が一瞬だけ当たりになっていた）。メニューから始めたときはいつも、START だけで始めたときはディップスイッチ SW1:5 が OFF（初期状態）のときに直る。SW1:5 を ON にすると純正どおり",
+  "9面で、キューブラッシュ以外のモードでリザードコアのあたりでやられると、キューブ地帯の手前から再開していた（キューブラッシュに切り替わったように見えた）のを、純正どおり面の最初から再開するように直した",
+  "スタートメニューとポーズメニューから INVINCIBLE を外した（死なずに遊ぶには NO DEATH / CUBE NO DEATH を使う）。メニューのカーソルは MODE から始まる"
+ ],
+ "verified": [
+  "NO DEATH・CUBE NO DEATH が無敵・時間制で始まり、残り30秒の表示・延長・0 でのゲームオーバーが動くこと（MAME）",
+  "ディップスイッチ SW1:8 の OFF / ON で、NO DEATH の時間（10分 / 5分）とキューブラッシュの残機（+5 / +2）が切り替わること（MAME）",
+  "HIT DISP で、自機の枠が自機に重なり、敵・弾の位置に印が出ること（1面・2面・5面、MAME）",
+  "CUBE FLASH で、反応の直前にキューブが点滅し、反応すると元の色に戻ること（MAME）",
+  "面が切り替わるときの書き込みの順が、SW1:5 OFF とメニューから始めたときは直した順、SW1:5 ON は純正どおりになること（MAME。もともと MAME ではタイミングの関係で自然には起きない）",
+  "9面で NORMAL のまま X 05B0 でやられると、面の最初から再開すること（MAME）",
+  "スタートメニュー・ポーズに INVINCIBLE が出ないこと"
+ ],
+ "known": [
+  "面クリア直後の即死の修正は、実機での確認がまだ",
+  "10面の脱出の最後にやられることがある件は、面クリア直後の即死とは別の原因で、まだ調べていない",
+  "HIT DISP は地形の当たり（見えている地形の絵そのもの）は描かない。ON にすると処理が少し増える",
+  "CUBE FLASH が ON の間、CUBE COLOR の灰色（反応しないキューブ）は出ず、元の色になる。点滅の白の間に1フレームだけ元の色に戻ることがある",
+  "キューブラッシュでは、9面の左端の地形が出ないので、キューブのくっつき方が実機と変わることがある（直し方を検討中）",
+  "パワーアップで5速にしてから、それより遅い SPEED の装備コマンドを使うと、ゲージの SPEED UP の字が消えたままになる",
+  "オプションハンターは1周目の序盤など、ゲームの条件によってはもともと出ない（タイマーが進まない）",
+  "装備コマンドは装備を足すだけなので、レーザー・ダブルを持っている状態からミサイル＋START を押してもノーマルショットには戻らない",
+  "解除コマンドの一時停止中は、通常プレイでもレバー上か下を入れたまま START を押すとメニューに入る",
+  "NO DEATH・CUBE NO DEATH の無敵の間は壁の中に入り込める"
+ ],
+ "en": {
+  "title": "NO DEATH and CUBE NO DEATH modes / hitbox display (HIT DISP) / CUBE FLASH / fix for sudden death right after a stage clear / INVINCIBLE removed",
+  "changes": [
+   "Added NO DEATH to the menu MODE: play without dying on a timer. 10 minutes per credit (5 minutes with a DIP switch). Time only runs while you can move the ship. From 30 seconds left, TIME is shown; press START while it is shown to use one credit and add 10 minutes (no credit needed on free play). At 0 the game ends on the spot. Scores do not enter the high score table",
+   "In NO DEATH, the pause menu lets you change equipment (SPEED, MISSILE, DOUBLE/LASER, OPTION, SHIELD), and MISS lets you lose a ship on purpose (your stock does not go down). A short guide to the controls is shown during the first START display",
+   "Added CUBE NO DEATH to the menu MODE: Cube Rush without dying, on a timer (same time and extension as NO DEATH)",
+   "With DIP switch SW1:8 ON, the NO DEATH time becomes 5 minutes instead of 10, and the extra lives in Cube Rush become +2 instead of +5 (default OFF = 10 minutes, +5)",
+   "Added HIT DISP to the pause menu (outside Cube Rush): shows hitboxes. The ship's hitbox is a red box; enemies, bullets and so on get yellow dots in the 8-dot cells their hitbox covers",
+   "Added CUBE FLASH to the Cube Rush pause menu: a cube blinks white shortly before it reacts. Choose when the blinking starts with OFF / SHORT / NORMAL / LONG",
+   "Merged CUBE LINE V and CUBE LINE H in the Cube Rush pause menu into one CUBE LINE item (vertical and horizontal lines are always shown together)",
+   "Fixed the ship sometimes being destroyed in empty space right after a stage clear (a bug in the original: when the stage changes, a terrain character could become solid for a moment). The fix is always on when you start from the menu; when you start with START only, it is on while DIP switch SW1:5 is OFF (the default). With SW1:5 ON the game behaves like the original",
+   "Fixed: in stage 9, outside Cube Rush, losing a ship around the Lizard Core restarted you in front of the cube section (it looked as if the game switched to Cube Rush). You now restart from the beginning of the stage, as in the original",
+   "Removed INVINCIBLE from the start menu and the pause menu (use NO DEATH or CUBE NO DEATH to play without dying). The menu cursor now starts on MODE"
+  ],
+  "verified": [
+   "NO DEATH and CUBE NO DEATH start invincible on a timer; the 30-second display, the extension and the game over at 0 work (MAME)",
+   "DIP switch SW1:8 OFF / ON switches the NO DEATH time (10 / 5 minutes) and the Cube Rush extra lives (+5 / +2) (MAME)",
+   "With HIT DISP, the red box sits on the ship and dots appear where enemies and bullets are (stages 1, 2 and 5, MAME)",
+   "With CUBE FLASH, a cube blinks just before it reacts and returns to its color when it reacts (MAME)",
+   "When the stage changes, the write order is the fixed one with SW1:5 OFF or when started from the menu, and the original one with SW1:5 ON (MAME; in MAME the bug does not happen by itself because of timing)",
+   "In stage 9 in NORMAL, losing a ship at X 05B0 restarts from the beginning of the stage (MAME)",
+   "INVINCIBLE no longer appears in the start menu or the pause menu"
+  ],
+  "known": [
+   "The fix for the sudden death right after a stage clear has not been checked on real hardware yet",
+   "Losing a ship at the very end of the stage 10 escape has a different cause from the stage-clear death and has not been looked into yet",
+   "HIT DISP does not show terrain hits (the visible terrain graphics are themselves the hit area). Turning it on adds a little processing",
+   "While CUBE FLASH is on, CUBE COLOR does not show gray for cubes that will not react; they keep their own color. During the white blink a cube can return to its color for one frame",
+   "In Cube Rush the terrain at the left edge of stage 9 is missing, so cubes can stick differently from the arcade (fix under consideration)",
+   "If you reach speed 5 with power-ups and then use the power-up command with a slower SPEED, the SPEED UP label in the gauge stays blank",
+   "The Option Hunter does not appear at all under some game conditions, such as early in the first loop (its timer does not advance)",
+   "The power-up command only adds equipment, so pressing Missile + START while you have Laser or Double does not take you back to the normal shot",
+   "While the unlock command is suspended, pressing START while holding Up or Down enters the menu even in normal play",
+   "While invincible in NO DEATH or CUBE NO DEATH you can go inside walls"
+  ]
+ }
+}
