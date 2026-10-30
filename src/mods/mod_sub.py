@@ -5,6 +5,16 @@
   ゲームが面の開始・再開のたびに 0x100e00〜0x101fff を消す（$0B9C）ので、同じときにこの範囲も消す（ClrHook）
 """
 SUB_FREE = 0x37d78
+# #2 キューブラッシュの左端の地形（B2'）: 純正で9面を最初から進めたとき、画面が止まる（0x5a000）までに地形を描いた呼び出し
+# （サブ $7CC2: d6=X d7=Y d4=1 a5=絵の場所）のうち、止まったときの左端（X 0x580〜）にかかる22件。
+# 測り方: src/lua/research/cubeleft/rec.lua（純正のサブの $AE40・$AF64 の jsr $7CC2 を記録の差し込みに替えて引数を書き出す）。
+# 数字は位置と、サブ ROM の中の絵の番地だけ（絵そのものは入れない）。キューブラッシュの開始・再開のときにゲーム自身の $7CC2 で描く
+CR9 = [(0x58140, 0xf000, 0x4a000), (0x58140, 0x2000, 0x4a000), (0x59140, 0xf000, 0x4a000), (0x59140, 0x2000, 0x4a000),
+       (0x5a140, 0xf000, 0x4a000), (0x5a140, 0x2000, 0x4a000), (0x58700, 0x3000, 0x4a000), (0x59700, 0x3000, 0x4a000),
+       (0x58740, 0xd000, 0x4a200), (0x58740, 0xc000, 0x4a280), (0x59640, 0xc000, 0x4a000), (0x59640, 0xb000, 0x4a000),
+       (0x59640, 0xa000, 0x4a000), (0x59640, 0x9000, 0x4a000), (0x58700, 0x6000, 0x4a400), (0x58700, 0x5000, 0x4a600),
+       (0x58700, 0x4000, 0x4a200), (0x59700, 0x4000, 0x4a480), (0x5a780, 0xa000, 0x4a400), (0x5a780, 0x9000, 0x4a600),
+       (0x5a780, 0x8000, 0x4a200), (0x5b780, 0x8000, 0x4a480)]
 MBS = 0x203f00
 
 CONSTS = """
@@ -189,6 +199,50 @@ cx_fix: move.b  d4,-(a7)        ; 番号を取っておく
         move.b  (a7)+,$4001(a1) ; 番号が後
         rts
 
+; ---- #2 キューブラッシュの左端の地形（B2'）----
+; 開始・再開（面の初期化で ClrHook が V_CRP を 0 に戻す）のあと、画面の位置が 0x58000〜0x5a000 の間に、
+; 純正で記録した22件をゲーム自身の地形の描き込み（$7CC2）で描く。初期化で地形が消されるのを待つため CRWAIT フレーム待ち、
+; 1フレームに4件ずつ（START 表示の間。地形の色はまだ 0 なので見えない）。当たり判定の印もゲームが付ける
+V_CRP   = $103710          ; 描いた件数（CRN 以上 = 済み）
+V_CRW   = $103711          ; 待ったフレーム
+CRWAIT  = 8
+CrPaint:
+        move.b  $201051.l,d0
+        andi.b  #$0f,d0
+        cmpi.b  #8,d0
+        bne.s   cp_x
+        move.l  $2038f0.l,d0
+        cmpi.l  #$58000,d0
+        bcs.s   cp_x
+        cmpi.l  #$5a000,d0
+        bhi.s   cp_x
+        moveq   #0,d1
+        move.b  V_CRP.l,d1
+        cmpi.b  #CRN,d1
+        bcc.s   cp_x
+        cmpi.b  #CRWAIT,V_CRW.l
+        bcc.s   cp_go
+        addq.b  #1,V_CRW.l
+cp_x:   rts
+cp_go:  moveq   #3,d2           ; 4件ずつ
+cp_l:   move.w  d1,d0
+        mulu    #12,d0
+        lea     CRTBL.l,a1
+        adda.l  d0,a1
+        movem.l d1-d2,-(a7)
+        move.l  (a1)+,d6
+        move.l  (a1)+,d7
+        movea.l (a1),a5
+        moveq   #1,d4
+        jsr     $7cc2.l
+        movem.l (a7)+,d1-d2
+        addq.b  #1,d1
+        cmpi.b  #CRN,d1
+        bcc.s   cp_e
+        dbf     d2,cp_l
+cp_e:   move.b  d1,V_CRP.l
+        rts
+
 ; ---- 毎フレーム ----  (解除/ロック/自動ロックはメインCPU側で処理)
 Frame:
         lea     LNPAL.l,a0      ; パレット6 の 6〜15番（CUBE LINE の色と見出しの色）→ 共有RAM $103dec（メインが毎フレーム写す）
@@ -229,6 +283,7 @@ fe_set: move.b  d1,$203ed1.l
         bne.s   fe_x
         clr.l   $201058.l
         jsr     CrEnd.l
+        jsr     CrPaint.l       ; #2 左端の地形
         jsr     HuntCtl.l
         cmpi.b  #2,TOPSTATE.l   ; キューブラッシュ: カプセルゲージは SPEED UP に固定（使ってもまた SPEED UP。5速まで）
         bne.s   fe_g
@@ -520,6 +575,9 @@ def apply(rom):
     data = data[:tbl_m - DATA_BASE] + mtab + stab + data[tbl_s - DATA_BASE + len(stab):]
     dl['RMTBL'] = tbl_m; dl['RSTBL'] = tbl_s; dl['RMCNT'] = len(mblobs)
     dl['RMAGIC'] = rb['magic'] + 0x100000; dl['RMVAL'] = rb['magicval']; dl['RSTAGE'] = rb['stage'] + 0x100000
+    if len(data) & 1: data += b'\0'
+    dl['CRTBL'] = DATA_BASE + len(data); dl['CRN'] = len(CR9)
+    data += b''.join(struct.pack('>III', x, y, a) for x, y, a in CR9)
     wt = DATA_BASE + len(data) + (len(data) & 1)
     data = data + (b'\0' if len(data) & 1 else b'') + WTYPE_BYTES
     consts = ''.join('%s = $%x\n' % (k, v) for k, v in dl.items()) + 'WTYPE = $%x\n' % wt
