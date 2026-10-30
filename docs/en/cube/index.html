@@ -107,15 +107,39 @@ button.gh{background:transparent;color:var(--acc)}
 <p>CUBE HEIGHT (H), SHIFT (S) and TYPE (T) in the mod ROM's menu are <b>numbers</b> given to these 2880 sequences (16 × 4 × 45 = 2880).</p>
 <ul>
   <li><b>Only H has a meaning you can see</b>: it is the height of the 1st cube.</li>
-  <li><b>S and T are not values that exist in the game.</b> They are "catalog numbers" for telling the sequences apart. You don't work out a sequence from them.</li>
+  <li><b>S and T are numbers for telling the sequences apart.</b> Working out a sequence from their values is hard, so we recommend picking by looking at the sequences. (Further research later showed that S follows a simple rule; see "<a href="#srule">The Rule Behind S</a>" below. T is a serial number.)</li>
   <li>So the way to use them is: <b>look at the sequences first, note the H, S and T of one you like, and pick them in the menu.</b> In "<a href="#view">View a Sequence</a>" below, choosing H, S and T shows all 99 cubes as a chart and as numbers.</li>
 </ul>
 <div style="overflow-x:auto"><table>
 <tr><th></th><th>Values</th><th>What it is</th><th>Changing it by one</th></tr>
 <tr><th>H</th><td style="white-space:nowrap">1–16</td><td>Height of the 1st cube (number in the table above; 1 is the lowest)</td><td>The 1st cube's height changes, and the rest becomes an almost entirely different sequence</td></tr>
-<tr><th>S</th><td style="white-space:nowrap">A–D</td><td>Family of the sequence (4)</td><td>The 1st cube stays the same; about half to three quarters of the rest change height</td></tr>
+<tr><th>S</th><td style="white-space:nowrap">A–D</td><td>Order in which the fine height shifts (4; see <a href="#srule">The Rule Behind S</a>)</td><td>The 1st cube stays the same; about half to three quarters of the rest change height</td></tr>
 <tr><th>T</th><td style="white-space:nowrap">01–45</td><td>Serial number within the same H and S</td><td>Neighboring numbers give <b>similar sequences</b> (4–26 of the 99 cubes differ, usually about 8). But there are 3 boundaries where it becomes an almost entirely different sequence</td></tr>
 </table></div>
+
+<h3 id="srule">The Rule Behind S (found by further research)</h3>
+<p>Looking again after H, S and T were made, we found that S follows a rule. We confirmed by calculation that it holds without exception for all 99 cubes of all 2880 sequences.</p>
+<ul>
+  <li><b>The 16 H numbers are made of a "band" × a "position within the band".</b>
+    <ul>
+      <li>Band (rough height): H1–4 = bottom, H5–8 = lower middle, H9–12 = upper middle, H13–16 = top.</li>
+      <li>Position within the band (fine height, 16-dot steps): H1, 5, 9, 13 are the lowest in their band (position 1); H2, 6, 10, 14 are position 2; H3, 7, 11, 15 are position 3; H4, 8, 12, 16 are the highest (position 4).</li>
+    </ul></li>
+  <li><b>For about 1024 frames (about 17 seconds, 20-odd cubes), every cube has the same position within its band.</b> Only the band changes from cube to cube.</li>
+  <li>Every 1024 frames, the position within the band switches for all cubes at once (4–5 times during the 99 cubes).</li>
+  <li><b>S is the order of these switches.</b> Where in the order it starts is decided by the 1st cube (H) and T.</li>
+</ul>
+<div style="overflow-x:auto"><table>
+<tr><th>S</th><th>Order of the position within the band</th></tr>
+<tr><td>A</td><td>1→2→3→4→1… (up by one each time; from the top back to the bottom)</td></tr>
+<tr><td>B</td><td>2→1→4→3→2…</td></tr>
+<tr><td>C</td><td>3→4→1→2→3…</td></tr>
+<tr><td>D</td><td>4→3→2→1→4… (down by one each time; from the bottom back to the top)</td></tr>
+</table></div>
+<ul>
+  <li>Example (H5, S B, T12): cubes 1–5 are all position 1 (H5, 13, 1, 5, 1), cubes 6–29 are all position 4 (H4, 8, 16, 12…), and from cube 30 they are all position 3.</li>
+  <li>The middle bands have pairs of numbers with the same height (H5 and 6, 7 and 8, 9 and 10, 11 and 12), so some cubes look the same height even when the position switches.</li>
+</ul>
 
 <h3>Recommended Settings</h3>
 <p>Each of H, S and T in the menu can also be set to RANDOM (as in the original game).</p>
@@ -156,6 +180,7 @@ button.gh{background:transparent;color:var(--acc)}
   <li>The timer has 65536 possible values, but the lowest 2 bits are not used in the height calculation, so there are 2880 actually different sequences.</li>
   <li><b>H</b>: the height number of the 1st cube.</li>
   <li><b>S</b>: bits 3–4 (from the bottom) of the timer at the moment of the 1st cube. Since the intervals are multiples of 16, these 2 bits are the same for all 99 cubes.</li>
+  <li><b>How the S rule works</b>: height number − 1 = 4 × band + (position − 1), and position − 1 = S xor (bits 11–12 from the bottom of the timer). These bits change every 1024 frames, so the position switches each time.</li>
   <li><b>T</b>: the remaining difference within the same H and S. There are 45, numbered in increasing order of the timer value. Where an upper digit of the timer carries over is where the T "boundaries" are.</li>
   <li>Even counting height numbers that share a height as one, all 2880 sequences are different.</li>
   <li>We chose H5, S B, T12 in MAME, recorded a full run, and confirmed that all 99 heights match the calculation.</li>
