@@ -25,10 +25,10 @@
    "issue": 47,
    "date": "2026-10-30",
    "title": "処理落ちのかかり方が全体的に甘い",
-   "body": "確かめたいことがあります。報告に書かれていた MAME の版が「0.089」となっていました（ほかの報告は 0.289）。どちらの版かを教えてください。古い MAME だと、処理落ちのかかり方がもともと違う可能性があります。あわせて、こちらでも1面ボスでミサイル・オプション2つの同じ状態を作り、純正と改造版で比べてみます。",
+   "body": "版を教えていただき、ありがとうございました（0.289 とのこと）。これで「古い MAME だから処理落ちのかかり方が違う」という見立ては外れました。次は、純正のROMと改造したROMを同じ MAME 0.289 で同じ場面（1面ボスでミサイル・オプション2つ）にして、処理落ちのかかり方を測って比べます。結果が出たら、またここに書きます。",
    "en": {
     "title": "Slowdown is generally weaker than it should be",
-    "body": "We would like to check one thing. The MAME version in the report reads \"0.089\" (other reports say 0.289). Could you tell us which one you used? With an older MAME the slowdown behaviour can differ to begin with. We will also compare the original and the mod ourselves, with the same state at the stage 1 boss (missiles and two options)."
+    "body": "Thank you for confirming the version (0.289). That rules out our first guess that an older MAME was behaving differently. Next we will compare the genuine ROM and the modded ROM on the same MAME 0.289, in the same situation (stage 1 boss with missiles and two options), and measure how the slowdown differs. We will post the result here."
    }
   }
  ]
