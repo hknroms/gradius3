@@ -36,7 +36,7 @@ O_STAGE, O_LOOP, O_AREA, O_MODE, O_BEGIN = 8, 9, 10, 11, 12
 RAMMAGIC = 0x103abe     # 共有RAMのコードを写し終えた印（サブが最後に書く。起動時にゲームが共有RAMを消すと 0 に戻る）
 MAGICVAL = 0x4d4f
 LCNT = 0x103abc          # 写している間のフレーム数（R3 の最後の語。写し終えたら使わない）
-REGIONS = [('C', 0x3fd9a, 0x3ffc0, 'rom'),
+REGIONS = [('C', 0x3fd6a, 0x3ffc0, 'rom'),   # 2026-10-30 拡張: $3fd6a〜$3fd99 の 48B はデモ入力の後ろのゼロ・参照なし（TECH.md「ROM の空き」の候補を使用）
            ('R1', 0x103860, 0x1038d4, 'shr'), ('R2', 0x103966, 0x1039c0, 'shr'), ('R3', 0x1039c6, LCNT, 'shr'),
            ('M1', 0x40500, 0x405e0, 'mrm'), ('M2', 0x42e78, 0x43000, 'mrm'), ('M3', 0x43f70, 0x44000, 'mrm')]
 STAGE = 0x1039c6        # メインRAMへ写す中身の受け渡し場所（R3 を借りる。先頭 6バイト = 写す先.l・ロング数-1.w）
@@ -89,8 +89,8 @@ ANY = {'rom', 'shr', 'mrm'}
 # 隙間の列（つなぎの bra.s で少し遅くなる）には、めったに通らない処理だけを置く（COLD の順に入るだけ）
 def chunk(name, src, where='any'):
     CHUNKS.append((name, src, {'rom'} if where == 'rom' else set(ANY) if where == 'any' else where))
-COLD = ['LoadW', 'EdLR', 'TypeBeg', 'TypeGrey', 'PalCopy', 'ApplyStart', 'ApplyStage', 'NextStg', 'NextPos', 'BossSet', 'PendB',
-        'CmdCnt', 'Command', 'AreaTbl', 'EvPtr', 'Die', 'ShPal', 'StageHook', 'ModState']
+COLD = ['LoadW', 'EdLR', 'TypeBeg', 'TypeGrey', 'ApplyStart', 'ApplyStage', 'NextStg', 'NextPos', 'BossSet', 'PendB',
+        'CmdCnt', 'Command', 'AreaTbl', 'EvPtr', 'Die', 'ShPal', 'StageHook', 'ModState', 'PalCopy']
 
 # 毎フレーム（フレームの処理の最初。0x1d1e の jsr $33b8 を置き換え）: 入力の写し・スコアの描き直し・見出しの色
 chunk('StubIn', """
