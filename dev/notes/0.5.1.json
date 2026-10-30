@@ -3,6 +3,7 @@
  "changes": [
   "メニューの MODE に NO DEATH を追加：死なないモードを時間制で遊べる。1クレジット10分（ディップスイッチで5分）。自機を動かせる間だけ時間が減る。残り30秒から画面に TIME が出て、その表示中に START を押すとクレジットを1つ使って +10分（フリープレイはクレジットなし）。0 になるとその場でゲームオーバー。ハイスコアには入らない",
   "NO DEATH のポーズで、装備（SPEED・MISSILE・DOUBLE/LASER・OPTION・SHIELD）を変えられる。MISS で自分から1機やられることもできる（残機は減らない）。最初の START 表示の間に操作の案内を出す",
+  "NO DEATH・CUBE NO DEATH のポーズに TIME を追加：残り時間を 分:秒 で読める（ポーズ中は時間が止まります）",
   "メニューの MODE に CUBE NO DEATH を追加：キューブラッシュを死なない時間制で遊べる（時間と延長は NO DEATH と同じ）",
   "NO DEATH で10面の下へ降りる区間（X 0800〜09C0）を降りずに上を進むと、画面が上のまま固定されて中ボスまで化けた画面になっていたのを直した。NO DEATH のときだけ、この区間では自機が上に行き過ぎないように押さえ、普通に遊んだときと同じように画面が下へ降りる",
   "ディップスイッチ SW1:8 を ON にすると、NO DEATH の時間が10分→5分、キューブラッシュの残機の上乗せが +5→+2 になる（初期状態は OFF＝10分・+5）",
@@ -23,7 +24,8 @@
   "面が切り替わるときの書き込みの順が、SW1:5 OFF とメニューから始めたときは直した順、SW1:5 ON は純正どおりになること（MAME。もともと MAME ではタイミングの関係で自然には起きない）",
   "キューブラッシュで、キューブの出る高さを同じ並びにしたとき、最初の60個が純正の9面と同じ位置に止まること（MAME。前の版は60個中23個がずれていた）",
   "9面で NORMAL のまま X 05B0 でやられると、面の最初から再開すること（MAME）",
-  "スタートメニュー・ポーズに INVINCIBLE が出ないこと"
+  "スタートメニュー・ポーズに INVINCIBLE が出ないこと",
+  "NO DEATH のポーズの TIME が残り時間を出し、ポーズ中は止まり、延長すると増えること（MAME）"
  ],
  "known": [
   "ディップスイッチ SW1:8 を ON にすると、コイン2（2つ目のコイン投入口）の料金設定が「2枚以上で1クレジット」側だけになり、1枚1クレジットなどが選べなくなります（初期値の 1枚1クレは SW1:8 が OFF のときの設定です）。コイン2を使っていない場合は影響ありません",
@@ -42,6 +44,7 @@
   "changes": [
    "Added NO DEATH to the menu MODE: play without dying on a timer. 10 minutes per credit (5 minutes with a DIP switch). Time only runs while you can move the ship. From 30 seconds left, TIME is shown; press START while it is shown to use one credit and add 10 minutes (no credit needed on free play). At 0 the game ends on the spot. Scores do not enter the high score table",
    "In NO DEATH, the pause menu lets you change equipment (SPEED, MISSILE, DOUBLE/LASER, OPTION, SHIELD), and MISS lets you lose a ship on purpose (your stock does not go down). A short guide to the controls is shown during the first START display",
+   "Added TIME to the pause menu in NO DEATH and CUBE NO DEATH: shows the remaining time as minutes:seconds (the timer is stopped while paused)",
    "Added CUBE NO DEATH to the menu MODE: Cube Rush without dying, on a timer (same time and extension as NO DEATH)",
    "Fixed: in NO DEATH, going through the descending part of stage 10 (X 0800–09C0) without going down left the screen stuck high, showing garbled graphics until the mid-boss. In NO DEATH only, the ship is now kept from going too high in this part, so the screen goes down as in normal play",
    "With DIP switch SW1:8 ON, the NO DEATH time becomes 5 minutes instead of 10, and the extra lives in Cube Rush become +2 instead of +5 (default OFF = 10 minutes, +5)",
@@ -62,7 +65,8 @@
    "When the stage changes, the write order is the fixed one with SW1:5 OFF or when started from the menu, and the original one with SW1:5 ON (MAME; in MAME the bug does not happen by itself because of timing)",
    "In Cube Rush, with the same sequence of cube heights, the first 60 cubes stop at the same positions as in the original stage 9 (MAME; the previous version had 23 of 60 in different places)",
    "In stage 9 in NORMAL, losing a ship at X 05B0 restarts from the beginning of the stage (MAME)",
-   "INVINCIBLE no longer appears in the start menu or the pause menu"
+   "INVINCIBLE no longer appears in the start menu or the pause menu",
+   "TIME in the NO DEATH pause menu shows the remaining time, stops while paused, and goes up after an extension (MAME)"
   ],
   "known": [
    "Turning DIP switch SW1:8 ON also limits the Coin B (second coin slot) pricing to \"2 or more coins per credit\"; settings such as 1 Coin/1 Credit are no longer available (the default 1 Coin/1 Credit needs SW1:8 OFF). It makes no difference if you do not use the second coin slot",
