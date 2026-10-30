@@ -157,6 +157,7 @@ code{font-size:12.5px;background:color-mix(in srgb,var(--sub) 15%,transparent);p
     <summary>このページの見方</summary>
     <ul>
       <li>GitHub の Issue のうち、作業の種類（検証・調査・実装・素材・資料）のラベルが付いたものを一覧にしています。開くたびに最新を読み込みます。</li>
+      <li><b>新着</b>タブには、まだ種類が決まっていない Issue（Google フォームから届いた報告など）が出ます。ボタンで種類を付けると作業タスクになり、その種類のタブに移ります。</li>
       <li>タブはそれぞれ直接開けます（例：<code>status.html#協力者</code>、<code>status.html#調査</code>）。</li>
       <li>担当・進み具合・提出物は、協力者（の Claude）が Issue にコメントするコマンド（<code>/claim</code> <code>/check</code> <code>/submit</code> <code>/done</code> など）で自動的に変わります。各タスクのボタンでも同じコマンドを書き込めます。</li>
       <li>担当の印：<span class="wk ai">🤖 Claude</span> は Claude が作業中（または Claude に頼んで待っている）、<span class="wk hu">👤 人</span> は人が作業中。</li>
@@ -278,6 +279,29 @@ function actions(t) {
   return `<div class="acts">${list.map(([lb, cmd, cls, opt], i) =>
     `<button type="button" class="${cls || ''}" data-n="${t.number}" data-type="${esc(t.type || '')}" data-i="${i}" data-s="${t.status}">${lb}</button>`).join('')}</div><div class="amsg" id="am${t.number}"></div>`;
 }
+
+// 新着（まだ種類が決まっていない Issue）: 種類を付けて作業タスクにするボタン
+function inboxCard(t) {
+  const ver = section(t.body, '版') || section(t.body, '対象の版');
+  const kind = section(t.body, '報告の種類');
+  const what = (section(t.body, '何が起きたか') || '').split('\n').filter(s => s.trim()).slice(0, 2).join(' ');
+  const meta = [];
+  if (kind) meta.push(esc(kind));
+  if (ver) meta.push(esc(ver));
+  meta.push('更新 ' + ago(t.updated_at));
+  const btns = TYPES.map(ty =>
+    `<button type="button" data-n="${t.number}" data-cmd="/type ${ty}">${ty} にする</button>`).join('');
+  return `<div class="card">
+    <div class="t"><span class="chip">新着</span><a href="${esc(t.html_url)}" target="_blank" rel="noopener"><span class="num">#${t.number}</span>${esc(t.title.replace(/^\[(検証|テスト|作業|要望)\]\s*/, ''))}</a></div>
+    <div class="meta">${meta.map(m => `<span>${m}</span>`).join('')}</div>
+    ${what ? `<div class="note">${esc(what.slice(0, 160))}</div>` : ''}
+    <div class="acts">${btns}</div><div class="amsg" id="am${t.number}"></div></div>`;
+}
+function viewInbox(D) {
+  const L = D.inbox || [];
+  return `<p class="lnote">Google フォームなどから届いて、まだ作業タスクになっていない報告です。中身を見て種類を付けると、その種類のタブに移ります。</p>` +
+    (L.length ? L.sort((a, b) => b.number - a.number).map(inboxCard).join('') : '<div class="empty">ありません</div>');
+}
 const LS = { get: k => { try { return localStorage.getItem(k) || ''; } catch { return ''; } }, set: (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch {} } };
 const token = () => LS.get('g3_gh_token');
 function aiSay(n, type) {
@@ -287,7 +311,9 @@ function aiSay(n, type) {
 async function copy(text) { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } }
 document.addEventListener('click', async e => {
   const b = e.target.closest('.acts button'); if (!b) return;
-  const n = +b.dataset.n, [lb, cmd0, , opt] = ACTIONS[b.dataset.s][+b.dataset.i];
+  const n = +b.dataset.n;
+  // data-cmd があるボタン（新着タブの「◯◯ にする」）は、そのコマンドをそのまま書き込む
+  const [lb, cmd0, , opt] = b.dataset.cmd ? [b.textContent, b.dataset.cmd, '', ''] : ACTIONS[b.dataset.s][+b.dataset.i];
   const msg = document.getElementById('am' + n);
   let cmd = cmd0;
   if (opt === 'ask') {
@@ -500,12 +526,13 @@ document.addEventListener('click', e => {
   window.open(url, '_blank', 'noopener');
 });
 
-const TABS = [{ id: '全体' }, { id: '要望' }, ...TYPES.map(t => ({ id: t })), { id: '協力者' }, { id: '始め方' }];
+const TABS = [{ id: '全体' }, { id: '新着' }, { id: '要望' }, ...TYPES.map(t => ({ id: t })), { id: '協力者' }, { id: '始め方' }];
 let DATA = null;
 function current() { const h = decodeURIComponent(location.hash.slice(1)); return TABS.some(t => t.id === h) ? h : '全体'; }
 function draw() {
   const cur = current();
   const cnt = id => !DATA ? '' : id === '全体' ? DATA.tasks.filter(t => !['done', 'fixed', 'later'].includes(t.status)).length
+    : id === '新着' ? (DATA.inbox || []).length
     : id === '協力者' ? people(DATA).length : id === '始め方' ? '' : id === '要望' ? DATA.tasks.filter(t => labelsOf(t).includes('要望') && !['done', 'fixed', 'later'].includes(t.status)).length : DATA.tasks.filter(t => t.type === id && !['done', 'fixed', 'later'].includes(t.status)).length;
   document.getElementById('nav').innerHTML = TABS.map(t =>
     `<a href="#${encodeURIComponent(t.id)}" class="${t.id === cur ? 'on' : ''}">${t.id}${DATA && t.id !== '始め方' ? `<span class="c">${cnt(t.id)}</span>` : ''}</a>`).join('');
@@ -513,7 +540,7 @@ function draw() {
   if (cur === '始め方') { out.innerHTML = viewHowto(); document.title = '始め方 — 共同作業のまとめ'; return; }
   if (cur === '要望') { out.innerHTML = viewRequest(DATA); document.title = '要望 — 共同作業のまとめ'; return; }
   if (!DATA) return;
-  out.innerHTML = cur === '全体' ? viewAll(DATA) : cur === '協力者' ? viewPeople(DATA) : viewType(DATA, cur);
+  out.innerHTML = cur === '全体' ? viewAll(DATA) : cur === '新着' ? viewInbox(DATA) : cur === '協力者' ? viewPeople(DATA) : viewType(DATA, cur);
   document.title = (cur === '全体' ? '' : cur + ' — ') + '共同作業のまとめ';
 }
 
@@ -553,11 +580,14 @@ async function load() {
       all.push(...list.filter(i => !i.pull_request));
       if (list.length < 100) break;
     }
-    const tasks = all.map(normalize).filter(t => t.type || labelsOf(t).includes('要望'));
+    const norm = all.map(normalize);
+    const tasks = norm.filter(t => t.type || labelsOf(t).includes('要望'));
+    // 新着: まだ種類が決まっていない、開いている Issue（Google フォームから届いた報告など）
+    const inbox = norm.filter(t => t.state === 'open' && !t.type && !labelsOf(t).includes('要望'));
     const forks = await getJSON(`${API}/forks?per_page=100`).catch(() => []);
     let collab = {};
     try { const r = await fetch('collaborators.json', { cache: 'no-store' }); if (r.ok) collab = await r.json(); } catch {}
-    DATA = { tasks, forks, collab };
+    DATA = { tasks, inbox, collab, forks };
     const al = document.getElementById('adminlink'); if (al && collab.admin_url && /^https:\/\/script\.google\.com\//.test(collab.admin_url)) { al.href = collab.admin_url; al.style.display = ''; }
     draw();
     stamp.textContent = new Date().toLocaleString('ja-JP', { dateStyle: 'short', timeStyle: 'short' }) + ' 時点';
