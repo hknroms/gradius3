@@ -13,6 +13,7 @@ import struct
 import os
 EXTRA_AREAS = os.environ.get('EXTRA_AREAS') == '1'
 BOSSRUSH = os.environ.get('BOSSRUSH') == '1'
+NOINV = os.environ.get('KEEP_INV') != '1'   # リリースではスタートメニュー・ポーズの INVINCIBLE を外す（v0.5.1〜。KEEP_INV=1 で残す）
 # 各行の表示（英字は普通の文字、数字は白抜き ❶〜❹）
 _W = lambda n: '#%d' % n
 AREA_LABELS_LESS = [
@@ -468,6 +469,7 @@ da_row:
         move.b  #%(attr)d,V_RA.l
         jsr     CubeSkip.l
         beq.s   da_ra
+NOINV_DRAW
         move.b  #ATTRDIS,V_RA.l
 da_ra:  lea     ROWMAP.l,a1
         moveq   #0,d1
@@ -540,6 +542,7 @@ CubeSkip:
         moveq   #0,d3
         tst.b   d7              ; INVINCIBLE の行: NO DEATH / CUBE NO DEATH では選べない（いつも無敵）
         bne.s   ck_c
+NOINV_SKIP
         cmpi.b  #1,$203f0b.l
         beq.s   ck_sk
         cmpi.b  #3,$203f0b.l
@@ -722,7 +725,7 @@ mi_ah:  move.b  (a0),(a1)+
         move.w  #29,d1
         move.b  #%(attr)d,d2
         jsr     PutStr.l
-        clr.b   V_CUR.l
+NOINV_CUR
         move.b  MBS_P1.l,V_PIN.l
         move.b  MBS_SYS.l,V_SIN.l
         move.b  #1,V_DIRTY.l
@@ -1138,6 +1141,7 @@ mf_fl1: cmpi.b  #1,$203f0b.l     ; MODE 1 = NO DEATH も ND_FLAG を立てる
         bne.s   mf_fl3
 mf_fl2: move.b  #1,$203e1a.l
 mf_fl3:
+NOINV_GO
         tst.b   $203e1a.l        ; ND_FLAG が立っていれば いつも無敵（控えた INVINCIBLE はそのまま）
         beq.s   mf_ndz
         move.b  #1,$203f20.l
@@ -2162,8 +2166,10 @@ PI_CF   = 18
 ; ---- 出す項目の表を作る: いつもの6つ ＋ NO DEATH なら装備と MISS ＋ キューブラッシュならキューブの5つ。d6 = 数 ----
 PMap:   lea     V_PMAP.l,a0
         moveq   #0,d0
-pm_b:   move.b  d0,(a0)+
-        addq.b  #1,d0
+pm_b:
+NOINV_PM
+        move.b  d0,(a0)+
+pm_b2:  addq.b  #1,d0
         cmpi.b  #PI_EQ,d0
         bcs.s   pm_b
         cmpi.b  #2,$203f0b.l    ; HIT DISP（#38）はキューブラッシュ（CUBE NO DEATH も始めると 2）のほかで出す（2026-10-30 管理者）
@@ -2473,5 +2479,16 @@ pf_go:  move.b  d0,MBS_PAUS.l
 pf_ret: rts
 """
 
+def _noinv(t):
+    if NOINV:
+        t = t.replace('NOINV_SKIP\n', '        bra.s   ck_sk           ; リリース: INVINCIBLE の行はいつも飛ばす\n')
+        t = t.replace('NOINV_DRAW\n', '        tst.b   d7              ; リリース: INVINCIBLE の行は描かない\n        beq.w   da_next\n')
+        t = t.replace('NOINV_CUR\n', '        move.b  #1,V_CUR.l      ; リリース: カーソルは MODE から\n')
+        t = t.replace('NOINV_GO\n', '        clr.b   $203f20.l        ; リリース: INVINCIBLE は無い（NO DEATH の無敵は下で立てる）\n')
+        t = t.replace('NOINV_PM\n', '        cmpi.b  #2,d0           ; リリース: ポーズの INVINCIBLE（PTAB 2）は出さない\n        beq.s   pm_b2\n')
+    else:
+        t = t.replace('NOINV_SKIP\n', '').replace('NOINV_DRAW\n', '').replace('NOINV_GO\n', '').replace('NOINV_PM\n', '')
+        t = t.replace('NOINV_CUR\n', '        clr.b   V_CUR.l\n')
+    return t
 def source(lab):
-    return ('GRIDCOL = %d\nATTRSELGRID = %d\nATTRDIS = %d\nCUBE0 = %d\n' % (GRID_COL, ATTR_SELGRID, ATTR_DIS, CUBE0)) + (ENGINE + ENGINE2 + PAUSE.replace('%', '%%')) % {'nitem': NITEM, 'row0': ROW0, 'colcur': COL_CUR, 'collab': COL_LABEL, 'colval': COL_VAL, 'attr': ATTR_TXT, 'attrsel': ATTR_SEL}
+    return _noinv(('GRIDCOL = %d\nATTRSELGRID = %d\nATTRDIS = %d\nCUBE0 = %d\n' % (GRID_COL, ATTR_SELGRID, ATTR_DIS, CUBE0)) + (ENGINE + ENGINE2 + PAUSE.replace('%', '%%')) % {'nitem': NITEM, 'row0': ROW0, 'colcur': COL_CUR, 'collab': COL_LABEL, 'colval': COL_VAL, 'attr': ATTR_TXT, 'attrsel': ATTR_SEL})

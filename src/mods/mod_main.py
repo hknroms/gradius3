@@ -1046,7 +1046,7 @@ def ext10_blob(boss=False):
     assert len(b) <= 0x88, len(b)
     return b + bytes(0x88 - len(b))
 
-def area_table_blob(st, base=0x103f40):
+def area_table_blob(st, base=0x103f40, areas=None):
     """面 st(0..9) をプレイ中に共有RAM base に置く独自エリア表（ポインタ16個 + その面の表 128バイト）。
     サブが今の面に合わせて毎フレーム書き直す（表は今の面の分だけ置けばよい）"""
     import struct
@@ -1058,7 +1058,7 @@ def area_table_blob(st, base=0x103f40):
     body = b''
     if st <= 8:
         ptr[smap[st]] = base + 64
-        body = b''.join(struct.pack('>II', x, y) for x, y in stage_areas(st) + [(0x0fffffff, 0)])
+        body = b''.join(struct.pack('>II', x, y) for x, y in (areas if areas is not None else stage_areas(st)) + [(0x0fffffff, 0)])
     assert len(body) <= 0x80, (st, len(body))
     b = b''.join(struct.pack('>I', x) for x in ptr) + body
     return b + bytes(0xc0 - len(b))

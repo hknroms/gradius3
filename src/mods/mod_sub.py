@@ -94,6 +94,12 @@ sb_sc:  cmpi.b  #9,d0
 sb_s9:  mulu    #192,d0
         lea     AREABLOB.l,a0
         adda.l  d0,a0
+        cmpi.w  #1536,d0                ; 9面（8×192）: キューブラッシュ以外は純正どおり面の最初だけ（#45。キューブ地帯の手前 0x58000・
+        bne.s   sb_n9                   ;   ボスの手前 0x5c000 はキューブラッシュの開始・復活用。NORMAL で死ぬとキューブ地帯から再開していた）
+        cmpi.b  #2,$203f0b.l
+        beq.s   sb_n9
+        lea     AREA9N.l,a0
+sb_n9:
         cmpi.b  #4,$203f0b.l   ; BOSS RUSH（BOSSRUSH=1。CUBE NO DEATH #39 のため 3→4 に）
         bne.s   sb_a0
         lea     BOSSBLOB.l,a0
@@ -470,6 +476,7 @@ def apply(rom):
     if len(data) & 1: data += b'\0'
     dl['AREABLOB'] = DATA_BASE + len(data); dl['AREACNT'] = len(ab) // 4 - 1
     data += b''.join(abs_)
+    dl['AREA9N'] = DATA_BASE + len(data); data += mod_main.area_table_blob(8, areas=[(0, 0)])   # #45 9面・キューブラッシュ以外
     bb = mod_main.boss_area_blob(); assert len(bb) == len(ab)
     dl['BOSSBLOB'] = DATA_BASE + len(data); data += bb
     import mod_edit
