@@ -26,6 +26,7 @@ BOSSRUSH = os.environ.get('BOSSRUSH') == '1'          # BOSS RUSH モード（v0
 EXTRA_AREAS = os.environ.get('EXTRA_AREAS') == '1'    # 場所を調整して足した復活地点（❶〜❹。10面 ❶ は残す）。mod_menu と同じ
 ND_FRAMES = 36000        # NO DEATH（#36）の1クレジットの時間（フレーム。10分）
 ND_LEFT = 0x103e10       # NO DEATH の残りフレーム.l（共有RAM。以前ボスラッシュの表を置いていた所）
+ND_FLAG = 0x103e1a       # NO DEATH の印（共有RAM。MODE 1=NO DEATH と MODE 3=CUBE NO DEATH で立つ。#39）
 MB = 0x103f00           # メールボックス（共有RAM。サブ側は 0x203f00）
 # オフセット
 O_P1, O_SYS, O_UNLOCK, O_REQ, O_DONE, O_KIND, O_PAUSE, O_MODRUN = 0, 1, 2, 3, 4, 5, 6, 7
@@ -71,6 +72,7 @@ MB_PSHON = $103f19
 MB_PEND  = $103f1a
 MB_INV   = $103f20
 ND_LEFT  = ${ND_LEFT:x}
+ND_FLAG  = ${ND_FLAG:x}
 ND_FRAMES = {ND_FRAMES}
 RAMMAGIC = ${RAMMAGIC:x}
 MAGICVAL = ${MAGICVAL:x}
@@ -655,7 +657,7 @@ ch_r:   rts
 chunk('NextStg', """
 NextStg: tst.b  MB_RUN.l
         beq.s   ns_n
-        cmpi.b  #3,MB_MODE.l
+        cmpi.b  #4,MB_MODE.l    ; BOSS RUSH（BOSSRUSH=1。CUBE NO DEATH #39 のため 3→4 に）
         bne.s   ns_n
         move.l  d0,-(sp)
         moveq   #0,d0
@@ -684,15 +686,15 @@ chunk('NextPos', """
 NextPos: jsr    $695c.w
         tst.b   MB_RUN.l
         beq.s   np_r
-        cmpi.b  #3,MB_MODE.l
+        cmpi.b  #4,MB_MODE.l    ; BOSS RUSH（BOSSRUSH=1。CUBE NO DEATH #39 のため 3→4 に）
         bne.s   np_r
         jmp     $4ce8.w
 np_r:   rts
 """)
 # 装備コマンドの残り回数（無敵中は無制限 $ff として返す）
 chunk('CmdCnt', """
-CmdCnt: cmpi.b  #1,MB_MODE.l    ; NO DEATH（#36）: 残り30秒の表示が出ている間は、START は延長（+10分）
-        bne.s   cc_i
+CmdCnt: tst.b   ND_FLAG.l       ; NO DEATH（#36・CUBE NO DEATH #39）: 残り30秒の表示が出ている間は、START は延長（+10分）
+        beq.s   cc_i
         cmpi.l  #1800,ND_LEFT.l
         bhi.s   cc_i            ; 表示が出る前は、いつもの装備コマンド
         tst.b   $4004a.l        ; フリープレイ: クレジットなしで延長
@@ -732,8 +734,8 @@ ph_nc:  jsr     PauseChk.l
         beq.w   ph_rts          ; 1: ポーズ中
         bcs.s   ph_np
         jsr     Command.l       ; 2: 装備コマンド（NO DEATH でクレジットがあれば延長）
-ph_np:  cmpi.b  #1,MB_MODE.l    ; NO DEATH（#36）: 自機を動かせる間だけ数える（ポーズ・START 表示・面クリア・エンディングなどは数えない）。0 でその場でゲームオーバー
-        bne.s   ph_nd
+ph_np:  tst.b   ND_FLAG.l       ; NO DEATH（#36・CUBE NO DEATH #39）: 自機を動かせる間だけ数える（ポーズ・START 表示・面クリア・エンディングなどは数えない）。0 でその場でゲームオーバー
+        beq.s   ph_nd
         lea     $101001.l,a0    ; 自機の状態（3 = 動かせる）。いま遊んでいる側
         tst.b   $4007f.l
         beq.s   ph_n1
@@ -872,7 +874,7 @@ SHESC_SRC = """        cmpi.b  #9,$101051.l    ; 10面のラスボスの後（�
         bcs.s   sh_nx
         ori.b   #$38,MB_PEND.l  ; bit3〜5 = 残りフレーム数×8（7フレーム）
 sh_nx:""" if EXTRA_AREAS else ''
-SHBOSS_SRC = """        cmpi.b  #3,MB_MODE.l
+SHBOSS_SRC = """        cmpi.b  #4,MB_MODE.l    ; BOSS RUSH（BOSSRUSH=1。CUBE NO DEATH #39 のため 3→4 に）
         bne.s   sh_go
 sh_boss:                        ; ボスラッシュ (開始位置はサブが用意するボスラッシュ用エリア表で決まる)
         moveq   #0,d0

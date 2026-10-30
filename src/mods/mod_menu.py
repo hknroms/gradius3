@@ -52,7 +52,7 @@ STAGE_LABELS = ['STAGE   %d' % i for i in range(1, 10)] + ['STAGE  10', 'EX STAG
 ROW_ORDER = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 10]
 ITEMS = [
     ('INVINCIBLE', 1, 0, 1, 0x20, ['OFF', 'ON'], 0),   # 一時的な項目（無敵）
-    ('MODE',      1, 0, 3 if BOSSRUSH else 2, 0x0b, ['NORMAL', 'NO DEATH', 'CUBE RUSH', 'BOSS RUSH'][:4 if BOSSRUSH else 3], 0),   # 0=NORMAL 1=NO DEATH(#36) 2=CUBE RUSH 3=BOSS RUSH
+    ('MODE',      1, 0, 4 if BOSSRUSH else 3, 0x0b, ['NORMAL', 'NO DEATH', 'CUBE RUSH', 'CUBE NO DEATH', 'BOSS RUSH'][:5 if BOSSRUSH else 4], 0),   # 0=NORMAL 1=NO DEATH(#36) 2=CUBE RUSH 3=CUBE NO DEATH(#39。mf_go で 2 に変換して ND_FLAG=1) 4=BOSS RUSH
     ('LOOP',      0, 1, 99, 0x09, None, 1),
 ] + [(STAGE_LABELS[i], 3, i + 1, AREAS[i], 0x08, None, 0) for i in ROW_ORDER] + [
     ('CUBE HEIGHT', 1, 0, 16, 0x35, ['RANDOM'] + [str(i) for i in range(1, 17)], 0),   # キューブラッシュの並び: 3つとも RANDOM = 純正のまま
@@ -492,15 +492,20 @@ ValCol:
 vc_r:   rts
 
 ; ---- CUBE HEIGHT/SHIFT/TYPE の行（d7=項目番号）をキューブラッシュ以外で飛ばす: ne=飛ばす（d3 を使う）----
+; メニュー表示時なので $203f0b は未変換（1=NO DEATH 2=CUBE RUSH 3=CUBE NO DEATH）。CUBE NO DEATH は NO DEATH と CUBE RUSH の両方の性質を持つ
 CubeSkip:
         moveq   #0,d3
-        tst.b   d7              ; INVINCIBLE の行: NO DEATH では選べない（いつも無敵）
+        tst.b   d7              ; INVINCIBLE の行: NO DEATH / CUBE NO DEATH では選べない（いつも無敵）
         bne.s   ck_c
         cmpi.b  #1,$203f0b.l
+        beq.s   ck_sk
+        cmpi.b  #3,$203f0b.l
         bne.s   ck_x
-        moveq   #1,d3
+ck_sk:  moveq   #1,d3
         bra.s   ck_x
-ck_c:   cmpi.b  #2,$203f0b.l
+ck_c:   cmpi.b  #2,$203f0b.l   ; CUBE RUSH または CUBE NO DEATH ではキューブの3行を飛ばさない
+        beq.s   ck_x
+        cmpi.b  #3,$203f0b.l
         beq.s   ck_x
         cmpi.b  #CUBE0,d7
         bcs.s   ck_x
@@ -560,13 +565,15 @@ DrawGrid:
 dg_lp:  cmp.b   6(a5),d6
         bhi.w   dg_r
 ; MODE によって使われないマスは暗い色(ATTRDIS):
-;   CUBE RUSH = 全部 / BOSS RUSH = EX STAGE の行全部と、面1〜10の行の B 以降(BOSS RUSH の行はそのまま)
+;   CUBE RUSH / CUBE NO DEATH = 全部 / BOSS RUSH = EX STAGE の行全部と、面1〜10の行の B 以降(BOSS RUSH の行はそのまま)
         move.b  5(a5),d0        ; この行の面番号(1〜10, 11=EX, 13=BOSS RUSH)
         move.b  $203f0a.l,d4    ; 選択中のエリア
-        move.b  $203f0b.l,d5    ; MODE（0=NORMAL 1=NO DEATH 2=CUBE RUSH 3=BOSS RUSH）
+        move.b  $203f0b.l,d5    ; MODE（0=NORMAL 1=NO DEATH 2=CUBE RUSH 3=CUBE NO DEATH #39 4=BOSS RUSH）
         cmpi.b  #2,d5
         beq.s   dg_dis
-        cmpi.b  #3,d5
+        cmpi.b  #3,d5           ; CUBE NO DEATH も CUBE RUSH と同じ扱い
+        beq.s   dg_dis
+        cmpi.b  #4,d5           ; BOSS RUSH（BOSSRUSH=1）
         bne.s   dg_en
         cmpi.b  #11,d0
         beq.s   dg_dis
@@ -1076,11 +1083,21 @@ mf_sv2: move.b  (a0)+,(a1)+
         clr.b   $203f35.l
         clr.w   $203f36.l
 mf_cr:
-        cmpi.b  #1,$203f0b.l     ; NO DEATH（#36）: いつも無敵（控えた INVINCIBLE はそのまま）
-        bne.s   mf_ndz
+; ---- CUBE NO DEATH（#39）: MODE 3 → 2(キューブラッシュ)に変換して ND_FLAG を立てる。NO DEATH(1) でも立てる ----
+        clr.b   $203e1a.l        ; ND_FLAG: いったん落とす（0=NORMAL / 2=CUBE RUSH はここで確定）
+        cmpi.b  #3,$203f0b.l     ; MODE 3 = CUBE NO DEATH → MODE 2(キューブラッシュ) + ND_FLAG
+        bne.s   mf_fl1
+        move.b  #2,$203f0b.l
+        bra.s   mf_fl2
+mf_fl1: cmpi.b  #1,$203f0b.l     ; MODE 1 = NO DEATH も ND_FLAG を立てる
+        bne.s   mf_fl3
+mf_fl2: move.b  #1,$203e1a.l
+mf_fl3:
+        tst.b   $203e1a.l        ; ND_FLAG が立っていれば いつも無敵（控えた INVINCIBLE はそのまま）
+        beq.s   mf_ndz
         move.b  #1,$203f20.l
 mf_ndz:
-        cmpi.b  #3,$203f0b.l     ; ボスラッシュ: 面1〜10は常にエリアA、EX STAGE は使えないので面1
+        cmpi.b  #4,$203f0b.l     ; ボスラッシュ(BOSSRUSH=1。番号を 3→4 に変更): 面1〜10は常にエリアA、EX STAGE は使えないので面1
         bne.s   mf_gb
         cmpi.b  #11,$203f08.l
         bne.s   mf_gb1
@@ -1589,12 +1606,12 @@ ph_d:   move.b  d7,(a0)+
         jmp     PutStr.l
 po_x:   rts
 
-; ---- NO DEATH（#36）: 残り30秒から、段4・桁27〜33 に「TIME 29」を出してカウントダウン（残りはメインが ND_LEFT $103e10 で数える）
+; ---- NO DEATH（#36・CUBE NO DEATH #39）: 残り30秒から、段4・桁27〜33 に「TIME 29」を出してカウントダウン（残りはメインが ND_LEFT $103e10 で数える）
 V_NDL   = $103733          ; 表示しているか（30秒より多くなったら消す）
 NdDisp: tst.b   MBS_RUN.l
         beq.w   nd_q
-        cmpi.b  #1,$203f0b.l
-        bne.w   nd_q
+        tst.b   $203e1a.l       ; ND_FLAG（NO DEATH または CUBE NO DEATH）
+        beq.w   nd_q
         cmpi.b  #2,TOPSTATE.l
         bne.w   nd_q
         move.w  $20101e.l,d0    ; 面が始まってから（fr と同じ判定）
@@ -1627,13 +1644,13 @@ nd_off: tst.b   V_NDL.l
         jmp     ClrFld.l
 nd_q:   rts
 
-; ---- NO DEATH（#36）: メニューから始めた最初の START 表示の間だけ、操作の案内を2行出す（この間は地形・背景が黒いので読みやすい #20）
+; ---- NO DEATH（#36・CUBE NO DEATH #39）: メニューから始めた最初の START 表示の間だけ、操作の案内を2行出す（この間は地形・背景が黒いので読みやすい #20）
 V_NDM   = $103734          ; 案内を出しているか
 NDMROW  = 19
 NdMsg:  tst.b   MBS_RUN.l
         beq.s   nm_off
-        cmpi.b  #1,$203f0b.l
-        bne.s   nm_off
+        tst.b   $203e1a.l       ; ND_FLAG（NO DEATH または CUBE NO DEATH）
+        beq.s   nm_off
         cmpi.b  #2,TOPSTATE.l
         bne.s   nm_off
         move.b  $203f1a.l,d0    ; 最初の START 表示: 面・エリアは反映済み（bit2 が下りた）で、その人の開始時の設定がまだ（bit0/1）
@@ -2038,10 +2055,10 @@ pf_dn:  btst    #3,d1           ; 下
         clr.b   V_PSEL.l
         bra.w   pf_rd
 pf_lr:  bsr.w   PSelIx          ; ON/OFF・値のある行: 左右・ショットで切り替え
-        cmpi.b  #2,d0           ; INVINCIBLE の行は NO DEATH では変えられない（いつも無敵）
+        cmpi.b  #2,d0           ; INVINCIBLE の行は NO DEATH / CUBE NO DEATH では変えられない（いつも無敵）
         bne.s   pf_l2
-        cmpi.b  #1,$203f0b.l
-        beq.w   pf_nm
+        tst.b   $203e1a.l       ; ND_FLAG (#36/#39)
+        bne.w   pf_nm
 pf_l2:  move.w  d0,d6           ; d6 = PTAB の番号
         mulu    #16,d0
         lea     PTAB.l,a0
@@ -2075,8 +2092,8 @@ pf_sv:  cmpi.b  #PI_EQ,d6       ; 装備の行: 再開のときに装備をや�
         cmpi.b  #PI_MISS,d6
         bcc.s   pf_s2
         move.b  #1,EQ_REQ.l
-pf_s2:  cmpi.b  #1,$203f0b.l    ; NO DEATH の無敵はスタートメニューの前回値に残さない
-        beq.s   pf_rd
+pf_s2:  tst.b   $203e1a.l       ; NO DEATH / CUBE NO DEATH の無敵はスタートメニューの前回値に残さない
+        bne.s   pf_rd
         move.b  MBS_INV.l,V_LINV.l
 pf_rd:  movem.l d1/d5,-(a7)
         jsr     PRest.l         ; 項目の数が変わる（INVINCIBLE の ON/OFF）と窓の大きさ・位置も変わるので、いったん戻して描き直す

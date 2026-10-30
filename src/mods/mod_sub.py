@@ -94,7 +94,7 @@ sb_sc:  cmpi.b  #9,d0
 sb_s9:  mulu    #192,d0
         lea     AREABLOB.l,a0
         adda.l  d0,a0
-        cmpi.b  #3,$203f0b.l
+        cmpi.b  #4,$203f0b.l   ; BOSS RUSH（BOSSRUSH=1。CUBE NO DEATH #39 のため 3→4 に）
         bne.s   sb_a0
         lea     BOSSBLOB.l,a0
 sb_a0:
@@ -125,7 +125,7 @@ sb_d1:  move.l  (a0)+,(a1)+
         dbf     d7,sb_d1
 sb_d2:
         lea     EXTN.l,a0               ; 10面の独自エリア表 → $103e40 (ボスラッシュ時はボス1直前から)
-        cmpi.b  #3,$203f0b.l
+        cmpi.b  #4,$203f0b.l           ; BOSS RUSH（BOSSRUSH=1。CUBE NO DEATH #39 のため 3→4 に）
         bne.s   sb_e0
         lea     EXTB.l,a0
 sb_e0:  lea     $203e40.l,a1
@@ -290,7 +290,16 @@ ce_w:   sub.w   V_CEW.l,d0
         cmpi.w  #119,d0
         bcs.s   ce_r
         ; 当たり判定は使わず、自機を「死亡の動きが終わった」状態にする（爆発・死ぬ音・曲の止めを出さない）
-        move.b  #4,$201001.l
+        tst.b   $203e1a.l       ; CUBE NO DEATH（#39）: 残機を減らさない（先に +1。MISS と同じやり方）
+        beq.s   ce_s4
+        move.b  $201050.l,d0
+        moveq   #1,d1
+        dc.w    $44fc,$0000     ; move #0,ccr
+        dc.w    $c101           ; abcd d1,d0
+        cmpi.b  #$99,d0
+        bcc.s   ce_s4
+        move.b  d0,$201050.l
+ce_s4:  move.b  #4,$201001.l
         move.b  #1,$201027.l
         rts
 ce_done: move.b #1,$203ed3.l
@@ -308,7 +317,7 @@ BrSkip: cmpi.b  #2,TOPSTATE.l
         bne.s   bk_r
         tst.b   MBS_RUN.l
         beq.s   bk_r
-        cmpi.b  #3,$203f0b.l
+        cmpi.b  #4,$203f0b.l   ; BOSS RUSH（BOSSRUSH=1。CUBE NO DEATH #39 のため 3→4 に）
         bne.s   bk_r
         moveq   #0,d0
         move.b  $201051.l,d0
