@@ -26,6 +26,7 @@
   "スタートメニュー・ポーズに INVINCIBLE が出ないこと"
  ],
  "known": [
+  "ディップスイッチ SW1:8 を ON にすると、コイン2（2つ目のコイン投入口）の料金設定が「2枚以上で1クレジット」側だけになり、1枚1クレジットなどが選べなくなります（初期値の 1枚1クレは SW1:8 が OFF のときの設定です）。コイン2を使っていない場合は影響ありません",
   "面クリア直後の即死の修正は、実機での確認がまだ",
   "10面の脱出の最後にやられることがある件は、面クリア直後の即死とは別の原因で、まだ調べていない",
   "HIT DISP は地形の当たり（見えている地形の絵そのもの）は描かない。ON にすると処理が少し増える",
@@ -64,6 +65,7 @@
    "INVINCIBLE no longer appears in the start menu or the pause menu"
   ],
   "known": [
+   "Turning DIP switch SW1:8 ON also limits the Coin B (second coin slot) pricing to \"2 or more coins per credit\"; settings such as 1 Coin/1 Credit are no longer available (the default 1 Coin/1 Credit needs SW1:8 OFF). It makes no difference if you do not use the second coin slot",
    "The fix for the sudden death right after a stage clear has not been checked on real hardware yet",
    "Losing a ship at the very end of the stage 10 escape has a different cause from the stage-clear death and has not been looked into yet",
    "HIT DISP does not show terrain hits (the visible terrain graphics are themselves the hit area). Turning it on adds a little processing",
