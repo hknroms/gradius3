@@ -269,13 +269,13 @@ V_CRNG  = $203e32
 ; ボスには行かずに自機を1機減らす → キューブラッシュの頭（0x58000）から始め直し。残機が無ければゲームオーバー
 ; 当たり判定は使わず、自機（$201000）を「死亡の動きが終わった」状態にして、ゲームの再開の流れに乗せる（爆発・死ぬ音・曲の止めは出ない）
 CrEnd:  cmpi.b  #2,TOPSTATE.l
-        bne.s   ce_clr
+        bne.w   ce_clr          ; .w: CUBE NO DEATH の +1 残機で ce_clr が遠くなった (#39)
         move.b  $201051.l,d0
         andi.b  #$0f,d0
         cmpi.b  #8,d0
-        bne.s   ce_clr
+        bne.w   ce_clr
         cmpi.w  #$5b0,$201052.l
-        bcs.s   ce_clr
+        bcs.w   ce_clr
         tst.b   $203ed3.l       ; もう死んだ
         bne.s   ce_off
         cmpi.b  #4,$201001.l    ; 死亡中になった → 済み
