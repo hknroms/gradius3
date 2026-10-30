@@ -66,6 +66,8 @@ code{font-size:12.5px;background:color-mix(in srgb,var(--sub) 15%,transparent);p
 <h1>Gradius III Mod ROM Patch</h1>
 <div class="sub">A mod based on the genuine version 313 ROM (hidden menu, stage select, Cube Rush and more). This page only distributes patches (differences). No ROM data is included.</div>
 
+<div id="replies"></div>
+
 
 <a class="bigl" id="report" href="testplay.html" style="margin-top:22px"><b>▶ Feedback, requests and bug reports</b><span>You can also send test play reports here. Impressions and ideas are welcome too</span></a>
 
@@ -295,6 +297,21 @@ function verHtml(v0, open) {
     ${v.verified && v.verified.length ? '<div><b>Verified</b>' + li(v.verified) + '</div>' : ''}
     ${v.known && v.known.length ? '<div><b>Known issues / notes</b>' + li(v.known) + '</div>' : ''}</details>`;
 }
+// Replies to reports (docs/replies.json). We cannot reply directly to people who write in through the form, so the answers go here
+(async () => {
+  let R = null;
+  try { R = await (await fetch('../replies.json', { cache: 'no-store' })).json(); } catch { return; }
+  const list = (R && R.replies) || [];
+  if (!list.length) return;
+  $('#replies').innerHTML = `<div class="panel" style="border-color:var(--acc)">
+    <b>Replies to your reports</b>
+    <div class="sub" style="margin:4px 0 10px">We have no way to answer you directly when you write in through the form, so our replies are posted here.
+      If this does not solve it, or something still looks wrong, please <a href="testplay.html">tell us again here</a>.</div>
+    ${list.map(r => { const e = r.en || {}; return `<details><summary>#${esc(r.issue)} ${esc(e.title || r.title || '')} <span class="tag">${esc(r.date || '')}</span></summary>
+      <div style="margin:8px 0 2px;white-space:pre-wrap">${esc(e.body || r.body || '')}</div></details>`; }).join('')}
+  </div>`;
+})();
+
 (async () => {
   try { DATA = await (await fetch('../versions.json', { cache: 'no-store' })).json(); }
   catch (e) { $('#latest').textContent = 'Could not load version information.'; return; }

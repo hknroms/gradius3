@@ -82,6 +82,7 @@ code{font-size:12.5px;background:color-mix(in srgb,var(--sub) 15%,transparent);p
 <h1>グラディウスIII 改造ROM パッチ</h1>
 <div class="sub">純正313版ベースの改造（隠しメニュー・面選択・キューブラッシュ ほか）。このページはパッチ（差分）だけを配布しています。ROMデータは含みません。</div>
 
+<div id="replies"></div>
 
 <a class="bigl" id="report" href="testplay.html" style="margin-top:22px"><b>▶ ご意見・ご要望・不具合報告</b><span>テストプレイの報告もこちらで書けます。感想や「こうなってほしい」も、気軽にどうぞ</span></a>
 
@@ -310,6 +311,21 @@ function verHtml(v, open) {
     ${v.verified && v.verified.length ? '<div><b>動作確認済み</b>' + li(v.verified) + '</div>' : ''}
     ${v.known && v.known.length ? '<div><b>未対応・注意</b>' + li(v.known) + '</div>' : ''}</details>`;
 }
+// 報告への回答（docs/replies.json）。Google フォームから報告した方には返事を返す手段がないので、ここに出して気づいてもらう
+(async () => {
+  let R = null;
+  try { R = await (await fetch('replies.json', { cache: 'no-store' })).json(); } catch { return; }
+  const list = (R && R.replies) || [];
+  if (!list.length) return;
+  $('#replies').innerHTML = `<div class="panel" style="border-color:var(--acc)">
+    <b>いただいた報告への回答</b>
+    <div class="sub" style="margin:4px 0 10px">フォームから送っていただいた方には、こちらから直接お返事ができません。回答をここに出しています。
+      この回答で解決しない・まだおかしいというときは、<a href="testplay.html">もう一度こちらから</a>お知らせください。</div>
+    ${list.map(r => `<details><summary>#${esc(r.issue)} ${esc(r.title || '')} <span class="tag">${esc(r.date || '')}</span></summary>
+      <div style="margin:8px 0 2px;white-space:pre-wrap">${esc(r.body || '')}</div></details>`).join('')}
+  </div>`;
+})();
+
 (async () => {
   try { DATA = await (await fetch('versions.json', { cache: 'no-store' })).json(); }
   catch (e) { $('#latest').textContent = '版情報を読み込めませんでした。'; return; }

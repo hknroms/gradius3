@@ -1,0 +1,35 @@
+{
+ "_how": "配布ページのトップに出る「報告への回答」。Google フォームから報告してくれた方には、こちらから返事を返す手段がないので、ここに書いて気づいてもらう。要らなくなったら手で消す。新しいものを上に書く。",
+ "replies": [
+  {
+   "issue": 45,
+   "date": "2026-10-30",
+   "title": "出現直後のリザードコアに自爆したら、キューブラッシュのような所から再開した",
+   "body": "原因が分かり、直しました（次の版に入ります）。改造版はキューブラッシュのために9面へ「キューブ地帯の手前」という再開の地点を足していたのですが、それが NORMAL のときにも効いていました。純正どおり、面の最初から再開するようにしました。",
+   "en": {
+    "title": "Self-destructing on a just-appeared Lizard Core restarted somewhere like Cube Rush",
+    "body": "Found and fixed (it will be in the next version). The mod adds a restart point just before the cube section of stage 9 for Cube Rush, and it was also being used in NORMAL. It now restarts from the beginning of the stage, as in the original."
+   }
+  },
+  {
+   "issue": 46,
+   "date": "2026-10-30",
+   "title": "敵破壊SEがおかしいものがある（砲台・モアイ）",
+   "body": "調べたところ、改造が原因ではなさそうです。メインCPUからサウンドCPUへ送る音の命令の並びは純正と同じで、改造で変えているのはメニューの曲の音量だけ、ゲーム中の音は同じでした。お手数ですが、同じ MAME で純正のROM（改造なし）でも同じ音になるか確かめて、結果を教えてください。純正でも同じなら、ゲームまたは MAME 側の音の出方ということになります。",
+   "en": {
+    "title": "Some enemy destruction sounds are off (gun emplacements, Moai)",
+    "body": "From what we could check, this does not look like it is caused by the mod. The sound commands sent from the main CPU to the sound CPU are the same as the original, and the only thing the mod changes is the volume of the menu tune; in-game sounds are identical. If you can, please check whether the same MAME produces the same sound with the genuine (unmodified) ROM and let us know. If it does, it comes from the game or from MAME itself."
+   }
+  },
+  {
+   "issue": 47,
+   "date": "2026-10-30",
+   "title": "処理落ちのかかり方が全体的に甘い",
+   "body": "確かめたいことがあります。報告に書かれていた MAME の版が「0.089」となっていました（ほかの報告は 0.289）。どちらの版かを教えてください。古い MAME だと、処理落ちのかかり方がもともと違う可能性があります。あわせて、こちらでも1面ボスでミサイル・オプション2つの同じ状態を作り、純正と改造版で比べてみます。",
+   "en": {
+    "title": "Slowdown is generally weaker than it should be",
+    "body": "We would like to check one thing. The MAME version in the report reads \"0.089\" (other reports say 0.289). Could you tell us which one you used? With an older MAME the slowdown behaviour can differ to begin with. We will also compare the original and the mod ourselves, with the same state at the stage 1 boss (missiles and two options)."
+   }
+  }
+ ]
+}
