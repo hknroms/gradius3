@@ -37,6 +37,15 @@ select,input{font:inherit;padding:5px 6px;border-radius:6px;background:var(--pan
 .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 .stat .sub{font-size:12px}
 button{font:inherit;padding:6px 14px;border-radius:8px;border:1px solid var(--acc);background:var(--acc);color:#fff;cursor:pointer}
+.fd{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start}
+.pad{display:flex;flex-direction:column;gap:3px;width:76px;flex:none}
+.pad button{padding:2px 0;font-size:13px;line-height:1.5;border-radius:6px}
+.fside{flex:1;min-width:150px}
+button.gh{background:transparent;color:var(--acc)}
+.fc{border-top:1px solid var(--line);padding:6px 0;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.fc b{min-width:7.5em}
+.fc .s{font-size:12px;color:var(--sub);word-break:break-all;flex:1;min-width:160px}
+.fc button{padding:2px 10px;font-size:13px}
 /* 会員承認ゲート */
 #site-content{display:none}
 #auth-gate{max-width:520px;margin:10vh auto;padding:24px 18px;text-align:center}
@@ -108,13 +117,38 @@ button{font:inherit;padding:6px 14px;border-radius:8px;border:1px solid var(--ac
 <tr><th>T</th><td style="white-space:nowrap">01〜45</td><td>同じ H・S の中の通し番号</td><td>近い番号どうしは<b>似た並び</b>です（99個のうち違うのは4〜26個、多くは8個ほど）。ただし途中に3か所、ほとんど別の並びに変わる境目があります</td></tr>
 </table></div>
 
-<h3>選び方の例</h3>
+<h3>おすすめの使い方</h3>
+<p>メニューの H・S・T は、それぞれ RANDOM（純正どおり）にもできます。</p>
+<div style="overflow-x:auto"><table>
+<tr><th>設定</th><th>どうなるか</th><th>向いている使い方</th></tr>
+<tr><td>3つとも RANDOM</td><td>純正と同じ</td><td>本番と同じ条件で遊ぶ・練習する（ふだんはこれ）</td></tr>
+<tr><td>3つとも指定</td><td>毎回まったく同じ並び</td><td>決まった並びを覚えて攻略する</td></tr>
+<tr><td>H だけ指定（S・T は RANDOM）</td><td>そろうのは<b>1個目の高さだけ</b>。2個目以降は、その H の180通りからランダム</td><td>出だしだけ練習したいとき。それ以外ではあまり意味がありません</td></tr>
+</table></div>
 <ul>
-  <li><b>同じ並びをくり返し練習する</b>：H・S・T を決めたら変えずに使う。メニューで待つ時間を変えても同じ並びになります。</li>
-  <li><b>少しだけ違う並びで慣らす</b>：T を1つずつ動かす（似た並びが続きます）。</li>
-  <li><b>まったく違う並びにする</b>：H か S を変える。</li>
-  <li><b>どれでもよい</b>：H・S・T を適当に選んでも、2880 通りのどれかになるだけです。困ることはありません。</li>
-  <li>処理落ちがあると、その分だけ並びがずれます（下の「処理落ちによるずれ」）。ずれて並びが変わったかどうかは CUBE INFO で分かります。</li>
+  <li><b>同じ並びをくり返し練習する</b>：H・S・T を3つとも決めて、変えずに使います。メニューで待つ時間を変えても同じ並びになります。</li>
+  <li><b>少しだけ違う並びで慣らす</b>：T を1つずつ動かします（似た並びが続きます）。</li>
+  <li><b>まったく違う並びにする</b>：H か S を変えます。</li>
+</ul>
+
+<h3>いま遊んでいる並びの番号を知る</h3>
+<ul>
+  <li>RANDOM で遊んでいるときも、<b>ポーズメニューで CUBE INFO を ON</b> にすると、1個目のキューブが出たところで、そのラッシュの H・S・T が表示されます。</li>
+  <li>練習したい並びが来たら、その H・S・T をメモしておけば、次からメニューで指定して同じ並びを出せます。</li>
+  <li>処理落ちで並びが変わったときは、CUBE INFO に「LAG:…」と出ます（下の「処理落ちによるずれ」）。</li>
+</ul>
+
+<h3>実機で覚えている並びを再現する</h3>
+<ul>
+  <li>実機（純正）の並びも、この 2880 通りのどれかです。番号さえ分かれば、改造ROMでそのまま再現できます。</li>
+  <li>番号は、下の「<a href="#find">覚えている並びから探す</a>」で、1個目から覚えている高さを入れると探せます。</li>
+  <li>どれくらい覚えていれば見つかるかの目安です。
+    <ul>
+      <li>1個目から <b>25個</b>の高さが正確に分かれば、候補は多くても12通りまで減ります。</li>
+      <li>1つに決まるのは、1個目から<b>約50個</b>分かったときです。</li>
+      <li>「上の方・下の方」くらいのあいまいな覚え方だと、候補はもっと多く残ります。そのときは、残った候補のグラフを見比べて「これだ」というものを選んでください。</li>
+    </ul></li>
+  <li>実機で処理落ちしていた場合は、そこから先の並びがずれています。覚えている並びが途中からどの候補とも合わないときは、合うところまでを入れて探してください。</li>
 </ul>
 
 <details style="margin:10px 0"><summary>細かいしくみ（番号の付け方）</summary>
@@ -180,6 +214,21 @@ button{font:inherit;padding:6px 14px;border-radius:8px;border:1px solid var(--ac
   <div class="chart"><canvas id="cv" tabindex="0" width="704" height="480" style="touch-action:none;width:100%;max-width:704px;display:block;margin:0 auto;cursor:crosshair"></canvas></div>
   <div id="pad" style="touch-action:none;user-select:none;-webkit-user-select:none;margin-top:8px;height:240px;border:1px dashed var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:13px;text-align:center;padding:0 12px">タッチ操作用のパッド：再生中にここをなぞると、なぞった分だけ自機が動きます（図の中をなぞっても同じ）</div>
   <div class="key"><span style="color:#5aaee8">■ 右寄りの2か所（318・286）</span><span style="color:#1e8cff">■ 254</span><span style="color:#00b8d4">■ 222</span><span style="color:#00c080">■ 190</span><span style="color:#2ecc40">■ x=158</span><span style="color:#9be22d">■ x=126</span><span style="color:#d4b000">■ x=94</span><span style="color:#ff8a00">■ x=62</span><span style="color:#ff1a1a">■ x=30</span><span style="color:var(--sub)">■ 反応しない</span><span>× 反応した位置／縦線は反応する10か所</span></div>
+</div>
+
+<h2 id="find">覚えている並びから探す</h2>
+<div class="panel">
+  <p class="sub" style="margin-top:0">1個目から順に、キューブの高さを押してください。高さは画面の上から下まで12段です（12＝一番上、1＝一番下）。覚えていないキューブは「？」で飛ばせます。この段は実際の高さの数え方で、H の番号（1〜16。同じ高さが2つずつある所がある）とは違います。</p>
+  <div class="fd">
+    <div class="pad" id="fpad"></div>
+    <div class="fside">
+      <div class="ctl"><button type="button" id="fq">？（分からない）</button><button type="button" id="fbk" class="gh">1つ戻す</button><button type="button" id="fcl" class="gh">全部消す</button></div>
+      <label style="display:flex;gap:6px;align-items:center;font-size:14px;margin-top:10px"><input type="checkbox" id="ffz"> だいたいでよい（1段ずれまで同じとみなす）</label>
+      <div class="seq num" id="fin"></div>
+      <div id="fnext" class="sub"></div>
+    </div>
+  </div>
+  <div id="fres" style="margin-top:10px"></div>
 </div>
 
 <h2 id="view">並びを見る</h2>
@@ -330,6 +379,44 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>
 resetPath();render();
 </script>
 </main>
+<script>
+(()=>{
+const L=document.documentElement.lang.startsWith('ja');
+const T=L?{n:k=>`${k}個目`,c:n=>`候補 <b>${n}</b> 通り`,none:'合う並びがありません。入れた高さを見直すか、「だいたいでよい」を試してください（処理落ちで途中からずれていることもあります）。',many:n=>`候補が多いので、もう少し入れてください（${n}通り以下になると一覧を出します）。`,next:(k,a)=>`${k}個目にありうる高さ：${a}`,view:'見る',start:'1個目から順に入れてください。',SL:['A','B','C','D']}
+ :{n:k=>`#${k}`,c:n=>`<b>${n}</b> candidates`,none:'No sequence matches. Check the heights you entered, or try "Roughly" (slowdown may also have shifted the sequence partway).',many:n=>`Too many candidates; enter a few more (a list appears at ${n} or fewer).`,next:(k,a)=>`Possible heights for cube #${k}: ${a}`,view:'View',start:'Enter heights in order from the 1st cube.',SL:['A','B','C','D']};
+const LV=[208,192,176,160,144,128,112,96,80,64,48,32];   // 段1（下）〜12（上）
+const lvOf=py=>LV.indexOf(py)+1;
+const ALL=C0.map(c=>D.map(d=>lvOf(HY[slot((c+d)&0xffff)])));
+const MAXL=30;let inp=[];
+const g=id=>document.getElementById(id);
+const pad=g('fpad');
+for(let v=12;v>=1;v--){const b=document.createElement('button');b.type='button';b.textContent=String(v);b.onclick=()=>{if(inp.length<99){inp.push(v);run()}};pad.appendChild(b)}
+g('fq').onclick=()=>{if(inp.length<99){inp.push(0);run()}};
+g('fbk').onclick=()=>{inp.pop();run()};
+g('fcl').onclick=()=>{inp=[];run()};
+g('ffz').onchange=run;
+function run(){
+  const fz=g('ffz').checked;
+  g('fin').innerHTML=inp.map((v,i)=>`<span title="${T.n(i+1)}">${v||'?'}</span>`).join('');
+  if(!inp.length){g('fres').innerHTML=`<div class="sub">${T.start}</div>`;g('fnext').textContent='';return}
+  const hit=[];
+  for(let i=0;i<ALL.length;i++){const q=ALL[i];let ok=true;
+    for(let k=0;k<inp.length;k++){const v=inp[k];if(v&&(fz?Math.abs(q[k]-v)>1:q[k]!==v)){ok=false;break}}
+    if(ok)hit.push(i)}
+  const k=inp.length;
+  if(hit.length&&k<99){const nx=[...new Set(hit.map(i=>ALL[i][k]))].sort((a,b)=>b-a);g('fnext').textContent=T.next(k+1,nx.join(', '))}else g('fnext').textContent='';
+  let h=`<div>${T.c(hit.length)}</div>`;
+  if(!hit.length)h+=`<div class="sub">${T.none}</div>`;
+  else if(hit.length>MAXL)h+=`<div class="sub">${T.many(MAXL)}</div>`;
+  else h+=hit.map(i=>{const H=Math.floor(i/180)+1,S=Math.floor(i/45)%4,TT=i%45+1;
+      return `<div class="fc"><b class="num">H${H} S${T.SL[S]} T${String(TT).padStart(2,'0')}</b><span class="s num">${ALL[i].slice(0,Math.min(99,k+10)).join(' ')} …</span><button type="button" data-i="${i}">${T.view}</button></div>`}).join('');
+  g('fres').innerHTML=h;
+  g('fres').querySelectorAll('button[data-i]').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;
+    $('h').value=Math.floor(i/180);$('s').value=Math.floor(i/45)%4;$('t').value=i%45;$('lf').value=0;draw();g('view').scrollIntoView({behavior:'smooth'})});
+}
+run();
+})();
+</script>
 <script type="module">
 // Firebase Web SDK（GitHub Pages向け。npm不要）
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';

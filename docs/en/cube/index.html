@@ -37,6 +37,15 @@ select,input{font:inherit;padding:5px 6px;border-radius:6px;background:var(--pan
 .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 .stat .sub{font-size:12px}
 button{font:inherit;padding:6px 14px;border-radius:8px;border:1px solid var(--acc);background:var(--acc);color:#fff;cursor:pointer}
+.fd{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start}
+.pad{display:flex;flex-direction:column;gap:3px;width:76px;flex:none}
+.pad button{padding:2px 0;font-size:13px;line-height:1.5;border-radius:6px}
+.fside{flex:1;min-width:150px}
+button.gh{background:transparent;color:var(--acc)}
+.fc{border-top:1px solid var(--line);padding:6px 0;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.fc b{min-width:7.5em}
+.fc .s{font-size:12px;color:var(--sub);word-break:break-all;flex:1;min-width:160px}
+.fc button{padding:2px 10px;font-size:13px}
 /* 会員承認ゲート */
 #site-content{display:none}
 #auth-gate{max-width:520px;margin:10vh auto;padding:24px 18px;text-align:center}
@@ -108,13 +117,38 @@ button{font:inherit;padding:6px 14px;border-radius:8px;border:1px solid var(--ac
 <tr><th>T</th><td style="white-space:nowrap">01–45</td><td>Serial number within the same H and S</td><td>Neighboring numbers give <b>similar sequences</b> (4–26 of the 99 cubes differ, usually about 8). But there are 3 boundaries where it becomes an almost entirely different sequence</td></tr>
 </table></div>
 
-<h3>Examples</h3>
+<h3>Recommended Settings</h3>
+<p>Each of H, S and T in the menu can also be set to RANDOM (as in the original game).</p>
+<div style="overflow-x:auto"><table>
+<tr><th>Setting</th><th>Result</th><th>Good for</th></tr>
+<tr><td>All three RANDOM</td><td>Same as the original game</td><td>Playing or practicing under real conditions (the usual choice)</td></tr>
+<tr><td>All three set</td><td>Exactly the same sequence every time</td><td>Learning and beating a particular sequence</td></tr>
+<tr><td>Only H set (S and T RANDOM)</td><td><b>Only the 1st cube's height</b> is fixed. The rest is random among the 180 sequences with that H</td><td>Practicing just the opening. Otherwise not very useful</td></tr>
+</table></div>
 <ul>
-  <li><b>Practice the same sequence again and again</b>: keep the same H, S and T. Waiting longer in the menu does not change the sequence.</li>
-  <li><b>Practice slightly different sequences</b>: move T one step at a time.</li>
+  <li><b>Practice the same sequence again and again</b>: set all three of H, S and T and keep them. Waiting longer in the menu does not change the sequence.</li>
+  <li><b>Practice slightly different sequences</b>: move T one step at a time (neighboring numbers are similar).</li>
   <li><b>Get a completely different sequence</b>: change H or S.</li>
-  <li><b>Anything is fine</b>: any H, S and T just picks one of the 2880 sequences. Nothing goes wrong.</li>
-  <li>Slowdown shifts the sequence (see "Drift Caused by Slowdown" below). CUBE INFO shows whether the sequence actually changed.</li>
+</ul>
+
+<h3>Finding the Number of the Sequence You Are Playing</h3>
+<ul>
+  <li>Even when playing with RANDOM, turning <b>CUBE INFO ON in the pause menu</b> shows the H, S and T of the current rush once the 1st cube appears.</li>
+  <li>When a sequence you want to practice comes up, note its H, S and T. Next time, set them in the menu to get the same sequence.</li>
+  <li>If slowdown changes the sequence, CUBE INFO shows "LAG:…" (see "Drift Caused by Slowdown" below).</li>
+</ul>
+
+<h3>Reproducing a Sequence You Remember from the Real Machine</h3>
+<ul>
+  <li>Sequences on the real (original) machine are also among these 2880. Once you know the number, the mod ROM can reproduce it exactly.</li>
+  <li>Use "<a href="#find">Find a Sequence You Remember</a>" below: enter the heights you remember, starting from the 1st cube.</li>
+  <li>How much you need to remember:
+    <ul>
+      <li>If you know the exact heights of the first <b>25</b> cubes, at most 12 candidates remain.</li>
+      <li>It narrows down to one when you know about the first <b>50</b>.</li>
+      <li>With vague memory ("somewhere high", "somewhere low"), more candidates remain. Compare the charts of the remaining candidates and pick the one that looks right.</li>
+    </ul></li>
+  <li>If the real machine had slowdown, the sequence is shifted from that point on. If what you remember stops matching every candidate partway, enter only the part that matches.</li>
 </ul>
 
 <details style="margin:10px 0"><summary>Details (how the numbers are assigned)</summary>
@@ -180,6 +214,21 @@ button{font:inherit;padding:6px 14px;border-radius:8px;border:1px solid var(--ac
   <div class="chart"><canvas id="cv" tabindex="0" width="704" height="480" style="touch-action:none;width:100%;max-width:704px;display:block;margin:0 auto;cursor:crosshair"></canvas></div>
   <div id="pad" style="touch-action:none;user-select:none;-webkit-user-select:none;margin-top:8px;height:240px;border:1px dashed var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:13px;text-align:center;padding:0 12px">Touch pad: during playback, drag here to move the ship by the amount you drag (dragging on the chart works the same way)</div>
   <div class="key"><span style="color:#5aaee8">■ the 2 rightmost (318, 286)</span><span style="color:#1e8cff">■ 254</span><span style="color:#00b8d4">■ 222</span><span style="color:#00c080">■ 190</span><span style="color:#2ecc40">■ x=158</span><span style="color:#9be22d">■ x=126</span><span style="color:#d4b000">■ x=94</span><span style="color:#ff8a00">■ x=62</span><span style="color:#ff1a1a">■ x=30</span><span style="color:var(--sub)">■ does not react</span><span>× where it reacted / vertical lines are the 10 reacting positions</span></div>
+</div>
+
+<h2 id="find">Find a Sequence You Remember</h2>
+<div class="panel">
+  <p class="sub" style="margin-top:0">Tap the height of each cube in order, starting from the 1st. Heights run in 12 levels from the top of the screen to the bottom (12 = top, 1 = bottom). Skip cubes you don't remember with "?". These levels count actual heights, which differs from H numbers (1–16, where some pairs share a height).</p>
+  <div class="fd">
+    <div class="pad" id="fpad"></div>
+    <div class="fside">
+      <div class="ctl"><button type="button" id="fq">? (don't know)</button><button type="button" id="fbk" class="gh">Undo</button><button type="button" id="fcl" class="gh">Clear</button></div>
+      <label style="display:flex;gap:6px;align-items:center;font-size:14px;margin-top:10px"><input type="checkbox" id="ffz"> Roughly (treat 1 level off as a match)</label>
+      <div class="seq num" id="fin"></div>
+      <div id="fnext" class="sub"></div>
+    </div>
+  </div>
+  <div id="fres" style="margin-top:10px"></div>
 </div>
 
 <h2 id="view">View a Sequence</h2>
@@ -330,6 +379,44 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>
 resetPath();render();
 </script>
 </main>
+<script>
+(()=>{
+const L=document.documentElement.lang.startsWith('ja');
+const T=L?{n:k=>`${k}個目`,c:n=>`候補 <b>${n}</b> 通り`,none:'合う並びがありません。入れた高さを見直すか、「だいたいでよい」を試してください（処理落ちで途中からずれていることもあります）。',many:n=>`候補が多いので、もう少し入れてください（${n}通り以下になると一覧を出します）。`,next:(k,a)=>`${k}個目にありうる高さ：${a}`,view:'見る',start:'1個目から順に入れてください。',SL:['A','B','C','D']}
+ :{n:k=>`#${k}`,c:n=>`<b>${n}</b> candidates`,none:'No sequence matches. Check the heights you entered, or try "Roughly" (slowdown may also have shifted the sequence partway).',many:n=>`Too many candidates; enter a few more (a list appears at ${n} or fewer).`,next:(k,a)=>`Possible heights for cube #${k}: ${a}`,view:'View',start:'Enter heights in order from the 1st cube.',SL:['A','B','C','D']};
+const LV=[208,192,176,160,144,128,112,96,80,64,48,32];   // 段1（下）〜12（上）
+const lvOf=py=>LV.indexOf(py)+1;
+const ALL=C0.map(c=>D.map(d=>lvOf(HY[slot((c+d)&0xffff)])));
+const MAXL=30;let inp=[];
+const g=id=>document.getElementById(id);
+const pad=g('fpad');
+for(let v=12;v>=1;v--){const b=document.createElement('button');b.type='button';b.textContent=String(v);b.onclick=()=>{if(inp.length<99){inp.push(v);run()}};pad.appendChild(b)}
+g('fq').onclick=()=>{if(inp.length<99){inp.push(0);run()}};
+g('fbk').onclick=()=>{inp.pop();run()};
+g('fcl').onclick=()=>{inp=[];run()};
+g('ffz').onchange=run;
+function run(){
+  const fz=g('ffz').checked;
+  g('fin').innerHTML=inp.map((v,i)=>`<span title="${T.n(i+1)}">${v||'?'}</span>`).join('');
+  if(!inp.length){g('fres').innerHTML=`<div class="sub">${T.start}</div>`;g('fnext').textContent='';return}
+  const hit=[];
+  for(let i=0;i<ALL.length;i++){const q=ALL[i];let ok=true;
+    for(let k=0;k<inp.length;k++){const v=inp[k];if(v&&(fz?Math.abs(q[k]-v)>1:q[k]!==v)){ok=false;break}}
+    if(ok)hit.push(i)}
+  const k=inp.length;
+  if(hit.length&&k<99){const nx=[...new Set(hit.map(i=>ALL[i][k]))].sort((a,b)=>b-a);g('fnext').textContent=T.next(k+1,nx.join(', '))}else g('fnext').textContent='';
+  let h=`<div>${T.c(hit.length)}</div>`;
+  if(!hit.length)h+=`<div class="sub">${T.none}</div>`;
+  else if(hit.length>MAXL)h+=`<div class="sub">${T.many(MAXL)}</div>`;
+  else h+=hit.map(i=>{const H=Math.floor(i/180)+1,S=Math.floor(i/45)%4,TT=i%45+1;
+      return `<div class="fc"><b class="num">H${H} S${T.SL[S]} T${String(TT).padStart(2,'0')}</b><span class="s num">${ALL[i].slice(0,Math.min(99,k+10)).join(' ')} …</span><button type="button" data-i="${i}">${T.view}</button></div>`}).join('');
+  g('fres').innerHTML=h;
+  g('fres').querySelectorAll('button[data-i]').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;
+    $('h').value=Math.floor(i/180);$('s').value=Math.floor(i/45)%4;$('t').value=i%45;$('lf').value=0;draw();g('view').scrollIntoView({behavior:'smooth'})});
+}
+run();
+})();
+</script>
 <script type="module">
 // Firebase Web SDK（GitHub Pages向け。npm不要）
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
