@@ -216,6 +216,9 @@ ROMAN_OFS = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22]   # 1文字ずつ空け�
 ATTR_SELGRID = 0x80      # 選択中のマスの色（パレット4: アトラクト後はオレンジ）
 ATTR_DIS = 0xa0          # MODE で使われないマスの色（パレット5: 暗い青紫）
 NITEM = len(ITEMS)
+STG0 = [it[0] for it in ITEMS].index('STAGE   1')   # 面の表の最初の行（12行。#72）
+STGEX = [it[0] for it in ITEMS].index('EX STAGE')
+CAPI = [it[0] for it in ITEMS].index('FULL POWER CAPSULE')
 CUBE0 = [it[0] for it in ITEMS].index('CUBE HEIGHT')   # CUBE HEIGHT/SHIFT/TYPE の最初の項目番号
 RSPI = [it[0] for it in ITEMS].index('RESPAWN') if RESPAWN else 255   # #35 RESPAWN の項目番号
 # 可視領域は タイル列12〜51 / 行2〜29 (320x224)。それに合わせて配置
@@ -565,17 +568,30 @@ ck_sk:  moveq   #1,d3
         bra.s   ck_x
 ck_c:
 RSP_SKIP
-        cmpi.b  #2,$203f0b.l   ; CUBE RUSH または CUBE NO DEATH ではキューブの3行を飛ばさない
-        beq.s   ck_x
-        cmpi.b  #3,$203f0b.l
-        beq.s   ck_x
-        cmpi.b  #CUBE0,d7
+        move.b  $203f0b.l,d0    ; MODE
+        cmpi.b  #2,d0           ; CUBE RUSH または CUBE NO DEATH: キューブの3行は選べる。面の表（9面に決まる）と
+        beq.s   ck_cr           ;   FULL POWER CAPSULE（ゲージは SPEED UP に固定）は意味がないので飛ばす（#72）
+        cmpi.b  #3,d0
+        beq.s   ck_cr
+        cmpi.b  #4,d0           ; BOSS RUSH（BOSSRUSH=1）: EX STAGE の行は使えない（#72）
+        bne.s   ck_cb
+        cmpi.b  #STGEX,d7
+        beq.s   ck_sk
+ck_cb:  cmpi.b  #CUBE0,d7
         bcs.s   ck_x
         cmpi.b  #CUBE0+2,d7
         bhi.s   ck_x
         moveq   #1,d3
 ck_x:   tst.b   d3
         rts
+ck_cr:  cmpi.b  #CAPI,d7
+        beq.s   ck_s2
+        cmpi.b  #STG0,d7
+        bcs.s   ck_x
+        cmpi.b  #STG0+11,d7
+        bhi.s   ck_x
+ck_s2:  moveq   #1,d3
+        bra.s   ck_x
 
 ; ---- 値変更 d6=+1/-1 ----
 ChangeVal:
@@ -2579,4 +2595,4 @@ def _noinv(t):
         t = t.replace('NOINV_CUR\n', '        clr.b   V_CUR.l\n')
     return t
 def source(lab):
-    return _noinv(('GRIDCOL = %d\nATTRSELGRID = %d\nATTRDIS = %d\nCUBE0 = %d\nRSPI = %d\n' % (GRID_COL, ATTR_SELGRID, ATTR_DIS, CUBE0, RSPI)) + (ENGINE + ENGINE2 + PAUSE.replace('%', '%%')) % {'nitem': NITEM, 'row0': ROW0, 'colcur': COL_CUR, 'collab': COL_LABEL, 'colval': COL_VAL, 'attr': ATTR_TXT, 'attrsel': ATTR_SEL})
+    return _noinv(('GRIDCOL = %d\nATTRSELGRID = %d\nATTRDIS = %d\nCUBE0 = %d\nRSPI = %d\nSTG0 = %d\nSTGEX = %d\nCAPI = %d\n' % (GRID_COL, ATTR_SELGRID, ATTR_DIS, CUBE0, RSPI, STG0, STGEX, CAPI)) + (ENGINE + ENGINE2 + PAUSE.replace('%', '%%')) % {'nitem': NITEM, 'row0': ROW0, 'colcur': COL_CUR, 'collab': COL_LABEL, 'colval': COL_VAL, 'attr': ATTR_TXT, 'attrsel': ATTR_SEL})

@@ -17,6 +17,7 @@
 - v0.5.0 の内容: MODE の BOSS RUSH と、場所を調整して足した開始位置をいったん外した（10面❶・BOSS RUSH の行・EX STAGE は残す。BOSS RUSH の行は NORMAL でも正しく始まるように直した）／#20 START 表示の間は地形・背景を出さない／メニューの整理（FULL POWER SPEED/CAPSULE・SHIELD COLOR・初期値・CUBE の3項目はキューブラッシュだけ）／キューブラッシュも開始スピード 0。説明文は dev/notes/0.5.0.json。#20 に `/fixed v0.5.0`。
 - INVINCIBLE（スタート・ポーズ）はまだ残している（NO DEATH を入れる版で外す）。
 
+- **#72（2026-10-31 main・次の版）**：スタートメニューで、CUBE RUSH・CUBE NO DEATH のときは面の表の12行と FULL POWER CAPSULE（ゲージが SPEED UP に固定）にカーソルが止まらないようにした（暗く描く）。BOSS RUSH（BOSSRUSH=1）では EX STAGE の行。LOOP は2周目以降でキューブの速さが変わるので残す。MAME でカーソルの動きを確認（NORMAL: 0→1→2→3〜14→18…、CUBE RUSH: 0→1→2→15→…→20→0）。
 - **#41・#62・#60（2026-10-31 main・v0.5.2 に入れる）**：テストモードの CHARACTER ROM CHECK・COLOR TEST・COIN COUNTER TEST を消して空きを作り（約930B）、解除のコマンドをメインに戻した（解除だけ・音 45・120秒で自動ロック。ロックのコマンドは無し）。キューブラッシュのポーズに CUBE SE（OFF・0E・29・01・1E。反応の瞬間に鳴る）。START だけのプレイは前と同じ（3万フレームで一致）。音の調べ `src/lua/research/sound/`。
 - **#63（2026-10-31 main）エンディングのスキップを「押し直し」に**：alamone さんの指摘どおり、START を押したままエンディングに入ると5フレーム目に飛んでいた（押されているだけで判定していた）。いったん離してから押したときだけ飛ぶように直した（サブ `$103E22`・メイン EndSkip。`src/lua/research/ending/README.md`）。メインの空きは ApplyStart の初期化をサブへ移して補った（#31 の 40B は入る）。
 - **#70（2026-10-31 main）メインの空きを作った**：#31 のガード（40B）の置き場所のため、改造のコードの一部をサブに寄せた（48B 空いた。M2 に 44B 続けて空き）。ND の時間・キューブの残機ボーナスの DIP 判定をサブの mf_go へ、StageHook の効いていなかったキューブの初期化を削除。#31 用の印 FIX31（`$103E21`）もサブが毎フレーム作る。MAME で移す前と同じ動きを確認（`src/lua/research/subshift/`）。#31 は alamone さんにガードの組み込みをお願いする。
