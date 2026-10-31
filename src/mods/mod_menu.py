@@ -71,7 +71,7 @@ ITEMS = [
     ('SHIELD COLOR', 1, 1, 10, 0x16, ['?', 'BLUE', 'RED', 'GREEN', 'GOLD', 'PURPLE', 'CYAN', 'ORANGE', 'PINK', 'SILVER', 'BLACK'], 1),   # #75 SHIELD COLOR を一番下に（見本の絵は上にはみ出す）
 ]
 # 各項目の画面の行（可視は行2〜29）。面の表の後・CUBE の後に1行ずつ空ける
-ROWS = [2, 3, 5] + list(range(7, 19)) + [20, 21, 22] + [24, 25, 26, 27]   # INVINCIBLE が一番上、最下段は PUSH START
+ROWS = [3, 4, 6] + list(range(8, 20)) + [21, 22, 23] + [25, 26, 27, 28]   # INVINCIBLE が一番上（文字の面の段3＝画面の2行目。2026-10-31 管理者: 上の端にくっつかないよう全体を1行下げた）
 assert len(ROWS) == len(ITEMS)
 PLUS_ROWS = ['........', '...f....', '...f9...', '.ffffff.', '..9f9999', '...f9...', '....9...', '........']   # ゲームの文字と同じ傾き・影
 PLUS_GFX = bytes(int(r[i] if r[i] != '.' else '0', 16) << 4 | int(r[i+1] if r[i+1] != '.' else '0', 16) for r in PLUS_ROWS for i in range(0, 8, 2))
@@ -87,7 +87,7 @@ def _stage9_pal():
     import os
     pal = open(os.path.join(os.path.dirname(__file__), 'cubecol', 'pal_stage9.bin'), 'rb').read()
     return [(pal[i*2] << 8) | pal[i*2+1] for i in range(0x200)]
-# ---- #75 スタートメニューのキューブの並びの見本（点）: キューブの3行にカーソルがある間だけ、右下（桁36〜51・段17〜24）に32個を点で出す ----
+# ---- #75 スタートメニューのキューブの並びの見本（点）: キューブの3行にカーソルがある間だけ、右下（桁36〜51・段18〜25）に32個を点で出す ----
 # 文字の面に、借りた字 0xC00〜0xC7F（128字。メニューの間だけ。ゲームが始まると START 表示で上書きされるのを確認）にドットで描く。
 # 色は文字の面のパレット3（ゲームも改造も使っていないのを確認）: 1〜8 = 反応する位置の色（CUBE COLOR と同じ順）・9 = 反応しない（灰）・
 # 10 = 右寄りの2か所（元の氷の色）・11 = 枠・12 = 目盛りの線・13 = 黒（不透明）。メインの PalCopy が $102200 から写す
@@ -113,8 +113,8 @@ def _spr_ent(pri, code, size, col, cx, cy, z=0, flip=False):
     x, y = cx - pw // 2, cy - ph // 2
     rx, ry = (x + 96) & 0x1ff, (240 - y) & 0x1ff
     return bytes([0x80 | pri, (size << 5) | ((code >> 8) & 0x1f), code & 0xff, col, (z << 2) | (ry >> 8), ry & 0xff, (z << 2) | (2 if flip else 0) | (rx >> 8), rx & 0xff])
-ROCK_C = (288, 80)        # 石の中心（ステージの行の右・ビッグコアMk-IIIの上）
-CUBE_C = (255, 151)       # 回るキューブの中心（キューブの並びの見本の枠の真ん中）
+ROCK_C = (288, 88)        # 石の中心（ステージの行の右・ビッグコアMk-IIIの上）
+CUBE_C = (255, 159)       # 回るキューブの中心（キューブの並びの見本の枠の真ん中）
 # 向きの絵（ゲームの5面ボス戦の絵。左向き・斜め・正面。右向きは左右反転）: 小さい頭 / ふくらんだ頭 / 大きい頭
 _ROCK_FACE = {'s': (0x11c0, 0x11c8, 0x11cc), 'm': (0x11ec, 0x11f4, 0x11f8), 'b': (0x1200, 0x1220, 0x1230)}
 def rock_anim():
@@ -1206,8 +1206,8 @@ mf_bg:  move.b  (a0)+,(a1)+
         jsr     MenuInit.l
         move.b  #1,V_INIT.l
 mf_run:
-        move.w  #42,d0          ; PUSH START: 右上の一番上（行2・桁42〜51）で点滅（約0.5秒ごと。2026-10-31 管理者）
-        move.w  #2,d1
+        move.w  #42,d0          ; PUSH START: 右上の一番上（行3・桁42〜51）で点滅（約0.5秒ごと。2026-10-31 管理者）
+        move.w  #3,d1
         btst    #5,$203951.l    ; FRAMECNT の下位
         beq.s   mf_pc
         lea     HELP2.l,a0
@@ -1403,14 +1403,14 @@ mf_cancel:
         rts
 
 ; ---- #75 キューブの並びの見本（点） ----
-; キューブの3行（CUBE HEIGHT/SHIFT/TYPE）にカーソルがある間だけ、桁36〜51・段17〜24（16×8字）に借りた字 0xC00〜0xC7F を並べる。
+; キューブの3行（CUBE HEIGHT/SHIFT/TYPE）にカーソルがある間だけ、桁36〜51・段18〜25（16×8字）に借りた字 0xC00〜0xC7F を並べる。
 ; H・S・T が変わったときだけ字の絵を描き直す（DotPix）。字の並べ直しは毎フレーム（DrawAll の値の消去が桁43まで届くので）。
 ; 字の番号 0xC00+n → 属性 $78（パレット3・番号の上位 $C）、番号の下位 = n
 V_DOTK  = $1036c0               ; 描いてある H・S・T（.l の下位3バイト）
 V_DOTV  = $1036c4               ; 出しているか
 V_RKF   = $1036c6               ; #75 5面ボスの石の動きのフレーム（.w）
 DOTBASE = $298000               ; 字 0xC00 の絵（サブの $280000 + 0xC00*32）
-DOTCELL2 = 2248                 ; 左上の升目（段17・桁36）の文字の面の中の位置×2 = (17*64+36)*2
+DOTCELL2 = 2376                 ; 左上の升目（段18・桁36）の文字の面の中の位置×2 = (18*64+36)*2
 DotPanel:
         move.b  V_CUR.l,d0
         cmpi.b  #CUBE0,d0
