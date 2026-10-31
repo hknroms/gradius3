@@ -548,8 +548,7 @@ fr_rk:  move.b  #1,V_RKL.l
         jsr     RankDisp.l
 fr_nr:  jsr     NdDown.l        ; #53 NO DEATH の10面の下へ降りる区間
         jsr     RspSub.l        ; #35 その場復活
-        jsr     HitDisp.l       ; #38 当たり判定の表示
-        jsr     StChk.l
+HITDISPCALL        jsr     StChk.l
         jsr     PosChk.l
         jsr     HuntDisp.l      ; #96
         jsr     NdDisp.l
@@ -780,6 +779,8 @@ def apply(rom):
     data = data + (b'\0' if len(data) & 1 else b'') + WTYPE_BYTES
     consts = ''.join('%s = $%x\n' % (k, v) for k, v in dl.items()) + 'WTYPE = $%x\n' % wt
     src = CONSTS + consts + SRC.replace(CONSTS, '', 1) + mod_menu.source(dl) + mod_edit.src()
+    a_hit = '        jsr     HitDisp.l       ; #38 当たり判定の表示（HITDISP=1 のビルドだけ）\n'
+    src = src.replace('HITDISPCALL', a_hit if mod_menu.HITDISP else '')
     src = src.replace('CSEDATA', 'dc.b    ' + ','.join('$%02x' % c for t, c in mod_menu.CUBE_SE))
     src = src.replace('V_INIT', 'V_INIT') 
     src = src.replace('TESTNOIRQ', 'cmpi.b  #2,TOPSTATE.l\n        bne.s   ih_go\n        jmp     $5c8.l\nih_go:' if os.environ.get('TESTNOIRQ') else '')

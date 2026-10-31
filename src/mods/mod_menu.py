@@ -13,6 +13,7 @@ import struct
 import os
 EXTRA_AREAS = os.environ.get('EXTRA_AREAS') == '1'
 BOSSRUSH = os.environ.get('BOSSRUSH') == '1'
+HITDISP = os.environ.get('HITDISP') == '1'   # #38 HIT DISP は v0.5.3 で外した（3面の地形の字と重なる #97。2026-11-01 管理者）。HITDISP=1 のビルドだけ入る
 NOINV = os.environ.get('NO_INV') == '1'   # スタートメニュー・ポーズの INVINCIBLE を外す（一般公開のとき。NO_INV=1。2026-10-30 管理者：今は残す）
 # 各行の表示（英字は普通の文字、数字は白抜き ❶〜❹）
 _W = lambda n: '#%d' % n
@@ -3098,5 +3099,10 @@ def _noinv(t):
         t = t.replace('NOINV_SKIP\n', '').replace('NOINV_DRAW\n', '').replace('NOINV_GO\n', '').replace('NOINV_PM\n', '')
         t = t.replace('NOINV_CUR\n', '        move.b  #1,V_CUR.l      ; カーソルは MODE から（INVINCIBLE は一番下の行）\n')
     return t
+def _nohit(t):
+    if HITDISP: return t
+    i = t.index('HitDisp:\n'); j = t.index('hx_x:   rts\n', i) + len('hx_x:   rts\n')   # 定数（HB_FLAG など）は残す
+    t = t[:i] + t[j:]
+    return t.replace('        move.b  #PI_HIT,(a0)+\n', '', 1)
 def source(lab):
-    return _noinv(('GRIDCOL = %d\nATTRSELGRID = %d\nATTRDIS = %d\nCUBE0 = %d\nSTG0 = %d\nSTGEX = %d\nCAPI = %d\n' % (GRID_COL, ATTR_SELGRID, ATTR_DIS, CUBE0, STG0, STGEX, CAPI)) + (ENGINE + ENGINE2 + PAUSE.replace('%', '%%')) % {'nitem': NITEM, 'row0': ROW0, 'colcur': COL_CUR, 'collab': COL_LABEL, 'colval': COL_VAL, 'attr': ATTR_TXT, 'attrsel': ATTR_SEL})
+    return _nohit(_noinv(('GRIDCOL = %d\nATTRSELGRID = %d\nATTRDIS = %d\nCUBE0 = %d\nSTG0 = %d\nSTGEX = %d\nCAPI = %d\n' % (GRID_COL, ATTR_SELGRID, ATTR_DIS, CUBE0, STG0, STGEX, CAPI)) + (ENGINE + ENGINE2 + PAUSE.replace('%', '%%')) % {'nitem': NITEM, 'row0': ROW0, 'colcur': COL_CUR, 'collab': COL_LABEL, 'colval': COL_VAL, 'attr': ATTR_TXT, 'attrsel': ATTR_SEL}))
