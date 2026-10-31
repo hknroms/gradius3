@@ -2,6 +2,26 @@
  "_how": "配布ページのトップに出る「報告への回答」。Google フォームから報告してくれた方には、こちらから返事を返す手段がないので、ここに書いて気づいてもらう。要らなくなったら手で消す。新しいものを上に書く。",
  "replies": [
   {
+   "issue": 84,
+   "date": "2026-10-31",
+   "title": "ポーズメニューの GAME OVER でキャラクターが残る・ネーム入れの表示がおかしい",
+   "body": "ご報告と画像をありがとうございます。ポーズの GAME OVER が、普通のゲームオーバーの片付けを一部飛ばしているためだと思われます。調べて直します。直ったら、ここと更新履歴でお知らせします。",
+   "en": {
+    "title": "GAME OVER from the pause menu leaves characters on screen / name entry looks wrong",
+    "body": "Thank you for the report and the image. GAME OVER from the pause menu probably skips part of the normal game over cleanup. We will look into it and fix it, and let you know here and in the update history."
+   }
+  },
+  {
+   "issue": 83,
+   "date": "2026-10-31",
+   "title": "メニューから始めたときの2回目のオプションハンターが早い",
+   "body": "ご報告ありがとうございます。1回目を出さないようにした仕組みが、2回目までの時間にも影響しているようです。純正の周期と比べて調べ、2回目以降は純正どおりの時間で出るように直します。",
+   "en": {
+    "title": "The second Option Hunter comes too early when starting from the menu",
+    "body": "Thank you for the report. The way we skip the first Option Hunter seems to affect the time until the second one. We will compare with the original timing and fix it so the second and later ones appear on the original schedule."
+   }
+  },
+  {
    "issue": 76,
    "date": "2026-10-31",
    "title": "CUBE COLOR を OFF にしても元の色に戻らない／5速から装備コマンドで遅くするとゲージの字が消える",
