@@ -15,10 +15,10 @@
    "issue": 93,
    "date": "2026-10-31",
    "title": "連射を有効にしていると、ショット＋ミサイル＋START でオプション2個にならない",
-   "body": "ご要望ありがとうございます。前半の件は、装備コマンドが START を押した瞬間のボタンしか見ていなかったのが原因でした。START を押している間に一度でも押されたショット・ミサイルを使うように直したので、連射をオンにしたままでもオプション2個の装備になります（次の版に入ります）。後半の「キューブラッシュを最初から装備した状態で始める」案は、今のところ入れない方向です。キューブラッシュは1周目の練習だけに使うものではなく、装備はそのために装備コマンドで選べるようにしています。連射のボタンだけで遊ばれていたためにこの事態になったのだと思いますので、今回の直しで解決に近づいていれば、このままにしたいと考えています。ほかにもご要望があれば、またお送りください。検討はしますが、優先度は低めになってしまうことをご了承ください。",
+   "body": "ご要望ありがとうございます。前半の件は、装備コマンドが START を押した瞬間のボタンしか見ていなかったのが原因でした。START を押している間に一度でも押されたショット・ミサイルを使うように直したので、連射をオンにしたままでもオプション2個の装備になります（次の版に入ります）。後半の、フル装備にするタイミングでオプションハンターの出るタイミングが変わってしまう件は、始まってすぐ START を押してフル装備にしたときに、オプションハンターのタイミングが合う方法を検討します。",
    "en": {
     "title": "With autofire on, SHOT + MISSILE + START does not give two options",
-    "body": "Thank you for the request. The first part was caused by the power-up command looking only at the buttons at the moment START was pressed. It now uses Shot and Missile if they were pressed at any time while START is held, so you get the two-option set even with rapid fire on (in the next version). For the second part (starting Cube Rush already powered up), we are leaning toward not adding it. Cube Rush is not only for practicing the first loop, and the power-up command exists so you can choose your equipment. We think this happened because you were playing with rapid-fire buttons only; if this fix gets you most of the way there, we would like to keep things as they are. If you have other requests, please send them. We will consider them, but we are sorry that their priority may be low."
+    "body": "Thank you for the request. The first part was caused by the power-up command looking only at the buttons at the moment START was pressed. It now uses Shot and Missile if they were pressed at any time while START is held, so you get the two-option set even with rapid fire on (in the next version). For the second part, where the timing of your full power-up changes when the Option Hunter appears, we will look into a way to keep the Option Hunter timing right when you press START right after the start to power up."
    }
   },
   {
