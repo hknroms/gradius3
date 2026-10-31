@@ -168,7 +168,7 @@ kbd{border:1px solid var(--line)}
 <details class="box" id="reports">
   <summary>▶ Previous reports and their status <span class="tag" id="rep-count"></span></summary>
   <div id="rep-list" class="sub">Loading…</div>
-  <div class="sub" style="margin-top:6px"><a href="https://github.com/hknroms/gradius3/issues" target="_blank" rel="noopener">See all reports on GitHub</a> (if the same issue is already there, please add to it). Most reports are written in Japanese.</div>
+  <div class="sub" style="margin-top:6px"><a href="https://github.com/hknroms/gradius3/issues?q=is%3Aissue%20%22%5B%E3%83%86%E3%82%B9%E3%83%88%5D%22%20in%3Atitle" target="_blank" rel="noopener">See all reports on GitHub</a> (if the same issue is already there, please add to it). Most reports are written in Japanese.</div>
 </details>
 
 <div class="sub" style="margin-top:24px">Gradius III is a work of KONAMI. This is an unofficial page for helpers of the mod patch.</div>
@@ -219,7 +219,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
     }
     // 確かめてほしいこと: 直した（/fixed）けれど、まだ「直っていた」の確認がないもの
     let SENT = {}; try { SENT = JSON.parse(localStorage.getItem('g3-rechecked') || '{}'); } catch {}
-    const todo = all.filter(i => { const st = state(i); return st.fixed_in && !(st.confirmed || []).length; }).sort((a, b) => b.number - a.number);
+    const todo = all.filter(i => { const st = state(i); return isReport(i) && st.fixed_in && !(st.confirmed || []).length; })   // 報告（[テスト]・要望）だけ。管理者の作業の Issue は出さない（2026-11-01）.sort((a, b) => b.number - a.number);
     if (todo.length) {
       const form = (i, res) => 'https://github.com/hknroms/gradius3/issues/new?' + [['template', 'testplay_en.yml'], ['title', '[Check] #' + i.number + ' ' + strip(i.title)],
         ['kind', 'Re-check of a fix'], ['version', latest || state(i).fixed_in], ['origin', '#' + i.number], ['recheck', res]].map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');

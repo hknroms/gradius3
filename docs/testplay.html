@@ -178,7 +178,7 @@ kbd{border:1px solid var(--line)}
 <details class="box" id="reports">
   <summary>▶ これまでの報告と、いまの状況 <span class="tag" id="rep-count"></span></summary>
   <div id="rep-list" class="sub">読み込み中…</div>
-  <div class="sub" style="margin-top:6px"><a href="https://github.com/hknroms/gradius3/issues" target="_blank" rel="noopener">GitHub ですべての報告を見る</a>（同じ内容がすでにあれば、その報告に書き足してください）</div>
+  <div class="sub" style="margin-top:6px"><a href="https://github.com/hknroms/gradius3/issues?q=is%3Aissue%20%22%5B%E3%83%86%E3%82%B9%E3%83%88%5D%22%20in%3Atitle" target="_blank" rel="noopener">GitHub ですべての報告を見る</a>（同じ内容がすでにあれば、その報告に書き足してください）</div>
 </details>
 
 <div class="sub" style="margin-top:24px">Gradius III は KONAMI の著作物です。本ページは非公式の改造パッチの協力者向けのページです。</div>
@@ -229,7 +229,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
     }
     // 確かめてほしいこと: 直した（/fixed）けれど、まだ「直っていた」の確認がないもの
     let SENT = {}; try { SENT = JSON.parse(localStorage.getItem('g3-rechecked') || '{}'); } catch {}   // このブラウザで送った確認（記録されるまで、ボタンの代わりに「送りました」を出す）
-    const todo = all.filter(i => { const st = state(i); return st.fixed_in && !(st.confirmed || []).length; }).sort((a, b) => b.number - a.number);
+    const todo = all.filter(i => { const st = state(i); return isReport(i) && st.fixed_in && !(st.confirmed || []).length; })   // 報告（[テスト]・要望）だけ。管理者の作業の Issue は出さない（2026-11-01）.sort((a, b) => b.number - a.number);
     if (todo.length) {
       const form = (i, res) => 'https://github.com/hknroms/gradius3/issues/new?' + [['template', 'testplay.yml'], ['title', '[確認] #' + i.number + ' ' + strip(i.title)],
         ['kind', '直ったかの確認'], ['version', latest || state(i).fixed_in], ['origin', '#' + i.number], ['recheck', res]].map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
