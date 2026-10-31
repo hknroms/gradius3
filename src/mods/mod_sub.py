@@ -555,6 +555,7 @@ fr_nr:  jsr     NdDown.l        ; #53 NO DEATH の10面の下へ降りる区間
 HITDISPCALL        jsr     StChk.l
         jsr     PosChk.l
         jsr     HuntDisp.l      ; #96
+        jsr     ShotDisp.l      ; #102
         jsr     LagMeter.l      ; #100
         jsr     NdDisp.l
         jsr     NdMsg.l
@@ -719,7 +720,7 @@ cu_t:   subq.w  #1,d2
         rts
 """
 
-DATA_BASE = 0x3a900   # 0x3ac00 → 0x3a900（#101 でデータが ROM の終わりを越えた。サブのコードの終わりは約 0x3a8e8）。0x3a800 → 0x3ac00（#92・#93 でサブのコードが増えた）。0x3a400 → 0x3a800（#60・#62）。0x39800 → 0x39c00（#30）→ 0x3a000（#36 でサブのコードが増えた）→ 0x3a400（#38・#48・#49）。データの終わりは 0x3e2xx、0x3ffff まで空き）
+DATA_BASE = 0x3ab00   # 0x3a900 → 0x3ab00（#102 SHOT DISP）。0x3ac00 → 0x3a900（#101 でデータが ROM の終わりを越えた。サブのコードの終わりは約 0x3a8e8）。0x3a800 → 0x3ac00（#92・#93 でサブのコードが増えた）。0x3a400 → 0x3a800（#60・#62）。0x39800 → 0x39c00（#30）→ 0x3a000（#36 でサブのコードが増えた）→ 0x3a400（#38・#48・#49）。データの終わりは 0x3e2xx、0x3ffff まで空き）
 WTYPE_BYTES = bytes([1,3,1, 3,1,4, 4,2,2, 2,4,3])   # TYPE A..D -> (missile, double, laser)
 
 def apply(rom):

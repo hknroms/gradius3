@@ -241,7 +241,8 @@ CUBE_SE = [('SE 1E ', 0x1e), ('SE 0E ', 0x0e), ('SE 15 ', 0x15), ('SE 1C ', 0x1c
 CF_FLAG = 0x203e2a     # ON/OFF（共有RAM $103E2A。#57 で $103813 → $103ED7 に移したが、$103ED7 は V_CEW（$103ED6.w）の下半分で毎フレーム消されていた → #73 で $103E2A へ。メニューから始めるたびに OFF）
 HT_VAL = 0x203e2b      # #92 HUNTER TIME（ポーズ。0=OFF 1〜100=0〜99秒。共有RAM $103E2B。再開のときメインの HtApply が使って 0 に戻す）
 LG_FLAG = 0x203e25     # #100 LAG METER（ポーズ。0=OFF 1=ON。共有RAM $103E25。メニューから始めるたびに OFF）
-HD_FLAG = 0x203e29     # #96 HUNTER DISP（ポーズ。0=OFF 1=ON。共有RAM $103E29（以前の $1039C6 は改造のコードの置き場 R3 と重なっていた）。メニューから始めるたびに OFF）
+HD_FLAG = 0x203e2f     # #96 HUNTER DISP（ポーズ。0=OFF 1=ON。共有RAM $103E2F。$1039C6 は R3、$103E29 はロックの放置フレーム数 $103E28.w の下半分で遊んでいる間毎フレーム消されていた。メニューから始めるたびに OFF）
+SD_FLAG = 0x203f3f     # #102 SHOT DISP（ポーズ。0=OFF 1=ON。共有RAM $103F3F＝MB+$3F。メニューから始めるたびに OFF）
 CF_N    = 12           # 反応の何フレーム前から光らせるか
 def _white_pal():
     P = _stage9_pal()
@@ -406,6 +407,7 @@ def build_data(base):
     for i in range(6): put('EN_%d' % i, b'%d     \0' % i)
     put('ED_1', b'DOUBLE\0'); put('ED_2', b'LASER \0'); put('ED_0', b'OFF   \0')
     put('PS_OFF', b'OFF\0')
+    put('PS_SD0', b'oSHOT DISP\0'); put('PS_SD1', b' SHOT DISP\0'); put('SD_C', b'>\0')   # #102 連射の速さ（入力:実際）
     put('PS_LG0', b'oLAG METER\0'); put('PS_LG1', b' LAG METER\0')   # #100 処理落ちメーター
     put('PS_HC0', b'oHUNTER DISP\0'); put('PS_HC1', b' HUNTER DISP\0'); put('HC_NO', b'---   \0'); put('HD_T', b'HUNTER>\0')   # #96 次のハンターまでの秒を画面の右上に出す（ON/OFF）
     put('PS_HT0', b'oHUNTER TIME\0'); put('PS_HT1', b' HUNTER TIME\0'); put('HT_OFF', b'OFF   \0')   # #92 閉じてから何秒後にオプションハンターを出すか
@@ -436,7 +438,8 @@ def build_data(base):
                          ('PS_CS0', 'PS_CS1', CS_FLAG, 'CSTAB'),
                          ('PS_HT0', 'PS_HT1', HT_VAL, 'HTTAB'),
                          ('PS_HC0', 'PS_HC1', HD_FLAG, 0),
-                         ('PS_LG0', 'PS_LG1', LG_FLAG, 0)]:   # 23 = LAG METER（#100。いつも出す）   # 22 = HUNTER DISP（#96。いつも出す。ON で段4に次のハンターまでの秒）   # 21 = HUNTER TIME（#92。キューブラッシュ以外）   # 20 = CUBE SE（#60。キューブラッシュだけ。CUBE FLASH の下）   # 19 = TIME（#55。NO DEATH のときだけ。値は PDraw が $203E10 から作る）   # 18 = CUBE FLASH（#48。キューブラッシュだけ）   # 17 = HIT DISP（#38。いつも出す）
+                         ('PS_LG0', 'PS_LG1', LG_FLAG, 0),
+                         ('PS_SD0', 'PS_SD1', SD_FLAG, 0)]:   # 24 = SHOT DISP（#102。いつも出す）   # 23 = LAG METER（#100。いつも出す）   # 22 = HUNTER DISP（#96。いつも出す。ON で段4に次のハンターまでの秒）   # 21 = HUNTER TIME（#92。キューブラッシュ以外）   # 20 = CUBE SE（#60。キューブラッシュだけ。CUBE FLASH の下）   # 19 = TIME（#55。NO DEATH のときだけ。値は PDraw が $203E10 から作る）   # 18 = CUBE FLASH（#48。キューブラッシュだけ）   # 17 = HIT DISP（#38。いつも出す）
         blob.extend(struct.pack('>IIII', lab[a], lab[b], f, lab[vt] if vt else 0))
     # STAGE DISP のエリア: 面1〜10 × 12。本来のエリア（英字）だけ（❶〜❹ は使わない＝手前の英字のまま。2026-10-28 管理者）
     #   STLAB = 英字（残りは 0）、STPRG = その開始進行度（メニューの表 PROGTBL と同じ値）
@@ -855,6 +858,7 @@ mi_ah:  move.b  (a0),(a1)+
         clr.b   $203e2a.l       ; CUBE FLASH（#48・#57・#73）
         clr.b   HD_FLAG.l       ; HUNTER DISP（#96）
         clr.b   LG_FLAG.l       ; LAG METER（#100）
+        clr.b   SD_FLAG.l       ; SHOT DISP（#102）
         move.b  #1,$203e23.l    ; CUBE SE（#60）: 初期値は 1E（#94）
         lea     $100830.l,a0    ; #94 くっついたキューブの分の音の控え（サブのRAM $100830〜$1008EF）を消す
         moveq   #47,d0
@@ -2618,7 +2622,9 @@ PI_CS   = 20               ; #60 CUBE SE
 PI_TIME = 19               ; #55 NO DEATH の残り時間（読むだけ。値は PDraw が作る）
 HT_VAL  = $203e2b
 LG_FLAG = $203e25
-HD_FLAG = $203e29
+HD_FLAG = $203e2f
+SD_FLAG = $203f3f
+PI_SD   = 24               ; #102 SHOT DISP（ON/OFF）
 PI_LG   = 23               ; #100 LAG METER（ON/OFF）
 PI_HC   = 22               ; #96 HUNTER DISP（ON/OFF）
 PI_HT   = 21               ; #92 HUNTER TIME（閉じてから何秒後にオプションハンターを出すか。値 HT_VAL: 0=OFF 1〜100=0〜99秒。再開のときメインの HtApply が使う）
@@ -2641,6 +2647,7 @@ pm_nt:
         move.b  #PI_HT,(a0)+    ; HUNTER TIME（#92）もキューブラッシュのほかで出す
         move.b  #PI_HC,(a0)+    ; HUNTER DISP（#96）はその下
         move.b  #PI_LG,(a0)+    ; LAG METER（#100）はその下
+        move.b  #PI_SD,(a0)+    ; SHOT DISP（#102）
 pm_nh:
         cmpi.b  #1,$203f0b.l    ; 装備と MISS は NO DEATH のときだけ（2026-10-29 管理者。INVINCIBLE はリリースで外すので）
         bne.s   pm_c
@@ -2663,6 +2670,7 @@ pm_k2:  addq.b  #1,d0
         bcs.s   pm_k
         move.b  #PI_HC,(a0)+    ; キューブラッシュでは HUNTER DISP（#96）をキューブの項目の下に
         move.b  #PI_LG,(a0)+    ; LAG METER（#100）はその下
+        move.b  #PI_SD,(a0)+    ; SHOT DISP（#102）
 pm_x:   move.l  a0,d6
         subi.l  #V_PMAP,d6
         move.b  d6,V_PCNT.l
@@ -2995,6 +3003,97 @@ hd_p:   move.w  d3,-(a7)
         moveq   #0,d2
         jmp     PutStr.l
 hd_x:   rts
+; ---- #102 SHOT DISP: ゲージの右（段29・桁46〜50）に「入力:実際」＝1秒あたりのショットの回数（2桁ずつ）。1秒ごとに描き直す
+;      入力 = ショットのボタン（P1 bit5）を押した回数（ボタンは1秒に60回しか読まないので最大30）
+;      実際 = 自機の弾（$201240〜 の6枠。オプションの弾・ミサイルは別の枠）が新しく出たフレームの数
+V_SDF   = $1036cb          ; 数えたフレーム
+V_SDI   = $1036cc          ; 入力の回数
+V_SDA   = $1036cd          ; 実際の回数
+V_SDP   = $1036ce          ; 前のフレームのボタン
+V_SDS   = $1036cf          ; 前のフレームの弾の枠（6ビット）
+V_SDL   = $1036d0          ; 出しているか
+V_SDX   = $1036d4          ; 枠ごとの前のフレームの X（.w × 6 = 〜$1036DF）
+ShotDisp: tst.b MBS_RUN.l
+        beq.w   sd_x
+        cmpi.b  #2,TOPSTATE.l
+        bne.w   sd_x
+        cmpi.b  #1,MBS_PAUS.l   ; ポーズ中は数えない
+        beq.w   sd_x
+        move.w  $20101e.l,d0
+        or.w    $20109e.l,d0
+        beq.w   sd_x
+        tst.b   SD_FLAG.l
+        bne.s   sd_on
+        tst.b   V_SDL.l
+        beq.w   sd_x
+        clr.b   V_SDL.l
+        move.w  #46,d0
+        move.w  #29,d1
+        moveq   #4,d7
+        jmp     ClrFld.l
+sd_on:  move.b  MBS_P1.l,d0     ; 入力: 離す→押す
+        andi.b  #$20,d0
+        move.b  V_SDP.l,d1
+        move.b  d0,V_SDP.l
+        not.b   d1
+        and.b   d1,d0
+        beq.s   sd_1
+        addq.b  #1,V_SDI.l
+sd_1:   lea     $201240.l,a0    ; 実際: 自機の弾の枠に新しい弾が出た（空いていた枠が埋まった、または X が戻った＝消えた枠をすぐ使い直した。レーザーは枠が空かないので X で見る）
+        lea     V_SDX.l,a1
+        moveq   #0,d0           ; d0 = 枠が埋まっている印、d2 = 新しく出た
+        moveq   #0,d2
+        move.b  V_SDS.l,d3      ; 前のフレームの印
+        moveq   #5,d1
+sd_l:   add.b   d0,d0
+        add.b   d3,d3
+        tst.b   (a0)
+        bpl.s   sd_2
+        addq.b  #1,d0
+        move.l  8(a0),d4
+        lsr.l   #8,d4
+        btst    #6,d3           ; 前は空いていた
+        beq.s   sd_n
+        cmp.w   (a1),d4         ; X が戻った
+        bcc.s   sd_k
+sd_n:   moveq   #1,d2
+sd_k:   move.w  d4,(a1)
+sd_2:   lea     $50(a0),a0
+        addq.l  #2,a1
+        dbf     d1,sd_l
+        move.b  d0,V_SDS.l
+        tst.b   d2
+        beq.s   sd_3
+        addq.b  #1,V_SDA.l
+sd_3:   tst.b   V_SDL.l         ; ON にしたばかり → すぐ描く
+        beq.s   sd_d
+        addq.b  #1,V_SDF.l
+        cmpi.b  #60,V_SDF.l
+        bcs.w   sd_x
+sd_d:   move.b  #1,V_SDL.l
+        clr.b   V_SDF.l
+        moveq   #0,d5
+        move.b  V_SDI.l,d5
+        clr.b   V_SDI.l
+        move.w  #46,d0
+        move.w  #29,d1
+        moveq   #0,d2
+        moveq   #2,d6
+        jsr     PutZ.l
+        lea     SD_C.l,a0
+        move.w  #48,d0
+        move.w  #29,d1
+        move.b  #ATTRLAB,d2
+        jsr     PutStr.l
+        moveq   #0,d5
+        move.b  V_SDA.l,d5
+        clr.b   V_SDA.l
+        move.w  #49,d0
+        move.w  #29,d1
+        moveq   #0,d2
+        moveq   #2,d6
+        jmp     PutZ.l
+sd_x:   rts
 ; a0 = 「nnnn S」か「---   」
 HcStr:  lea     HC_NO.l,a0
         moveq   #7,d1
