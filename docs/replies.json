@@ -2,6 +2,16 @@
  "_how": "配布ページのトップに出る「報告への回答」。Google フォームから報告してくれた方には、こちらから返事を返す手段がないので、ここに書いて気づいてもらう。要らなくなったら手で消す。新しいものを上に書く。",
  "replies": [
   {
+   "issue": 95,
+   "date": "2026-11-01",
+   "title": "スコアなどの「0」の字が乱れる",
+   "body": "ご報告ありがとうございます。同じ件のご報告（#90）をいただいていて、原因が分かり直しました（次の版に入ります）。キューブが地形にくっつくとき、その絵を描き込む先の字が、場所によって数字の「0」の字になっていました。",
+   "en": {
+    "title": "The \"0\" character in the score gets garbled",
+    "body": "Thank you for the report. We had received the same report (#90), found the cause, and fixed it (in the next version). When a cube sticks to the terrain, its image was sometimes drawn into the character for the digit \"0\"."
+   }
+  },
+  {
    "issue": 94,
    "date": "2026-10-31",
    "title": "キューブが反応する瞬間の SE について",
