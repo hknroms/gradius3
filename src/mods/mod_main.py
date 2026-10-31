@@ -342,7 +342,6 @@ pc_chk: lea     $103f21.l,a0    ; 1P START: 短く押す=装備コマンド / �
         addq.b  #1,(a0)
         cmpi.b  #60,(a0)
         bne.s   pc_no
-        move.w  $42e70.l,$103e2c.l  ; #96 ポーズの HUNTER COUNT 用にハンターの時間を写す（サブはメインのRAMを読めない）
         move.b  #1,MB_PAUS.l
 pc_frz: moveq   #1,d0
         rts
@@ -860,6 +859,7 @@ chunk('PlayHook', """
 PlayHook:
         tst.b   MB_RUN.l
         beq.w   ph_go
+        move.w  $42e70.l,$103e2c.l  ; #96 HUNTER DISP 用にハンターの時間を毎フレーム写す（サブはメインのRAMを読めない）
         cmpi.b  #1,$103f16.l    ; SHD COLOR (1=純正の青)
         beq.s   ph_nc
         lea     $103e00.l,a0    ; サブが用意した7色 → シールドのパレット(0x131-0x136,0x13e)

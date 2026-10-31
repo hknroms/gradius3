@@ -551,6 +551,7 @@ fr_nr:  jsr     NdDown.l        ; #53 NO DEATH の10面の下へ降りる区間
         jsr     HitDisp.l       ; #38 当たり判定の表示
         jsr     StChk.l
         jsr     PosChk.l
+        jsr     HuntDisp.l      ; #96
         jsr     NdDisp.l
         jsr     NdMsg.l
         cmpi.b  #1,MBS_PAUS.l

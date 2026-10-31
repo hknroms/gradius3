@@ -239,6 +239,7 @@ CS_FLAG = 0x203e23     # CUBE SE（#60。0=OFF / 1〜=CUBE_SE の何番目の音
 CUBE_SE = [('SE 1E ', 0x1e), ('SE 0E ', 0x0e), ('SE 15 ', 0x15), ('SE 1C ', 0x1c)]   # #94 29・01 は消し、15・1C を足した（2026-11-01 管理者）。初期値は1番目（1E）
 CF_FLAG = 0x203e2a     # ON/OFF（共有RAM $103E2A。#57 で $103813 → $103ED7 に移したが、$103ED7 は V_CEW（$103ED6.w）の下半分で毎フレーム消されていた → #73 で $103E2A へ。メニューから始めるたびに OFF）
 HT_VAL = 0x203e2b      # #92 HUNTER TIME（ポーズ。0=OFF 1〜100=0〜99秒。共有RAM $103E2B。再開のときメインの HtApply が使って 0 に戻す）
+HD_FLAG = 0x2039c6     # #96 HUNTER DISP（ポーズ。0=OFF 1=ON。共有RAM の空き $1039C6。メニューから始めるたびに OFF）
 CF_N    = 12           # 反応の何フレーム前から光らせるか
 def _white_pal():
     P = _stage9_pal()
@@ -399,7 +400,7 @@ def build_data(base):
     for i in range(6): put('EN_%d' % i, b'%d     \0' % i)
     put('ED_1', b'DOUBLE\0'); put('ED_2', b'LASER \0'); put('ED_0', b'OFF   \0')
     put('PS_OFF', b'OFF\0')
-    put('PS_HC0', b'oHUNTER COUNT\0'); put('PS_HC1', b' HUNTER COUNT\0'); put('HC_NO', b'---   \0')   # #96 次のハンターまでの秒（読むだけ）
+    put('PS_HC0', b'oHUNTER DISP\0'); put('PS_HC1', b' HUNTER DISP\0'); put('HC_NO', b'---   \0'); put('HD_T', b'HUNTER>\0')   # #96 次のハンターまでの秒を画面の右上に出す（ON/OFF）
     put('PS_HT0', b'oHUNTER TIME\0'); put('PS_HT1', b' HUNTER TIME\0'); put('HT_OFF', b'OFF   \0')   # #92 閉じてから何秒後にオプションハンターを出すか
     al(); lab['HTTAB'] = base + len(blob); blob.extend(struct.pack('>I', 101))   # 値 0 = OFF（変えない）、1〜100 = 0〜99秒（文字は PDraw が作る）
     # ポーズの項目: 選択中の文字列.l 通常の文字列.l ON/OFF の場所.l(0=なし)
@@ -427,7 +428,7 @@ def build_data(base):
                          ('PS_TM0', 'PS_TM1', 0, 0),
                          ('PS_CS0', 'PS_CS1', CS_FLAG, 'CSTAB'),
                          ('PS_HT0', 'PS_HT1', HT_VAL, 'HTTAB'),
-                         ('PS_HC0', 'PS_HC1', 0, 0)]:   # 22 = HUNTER COUNT（#96。いつも出す。値は PDraw が $203E2C から作る）   # 21 = HUNTER TIME（#92。キューブラッシュ以外）   # 20 = CUBE SE（#60。キューブラッシュだけ。CUBE FLASH の下）   # 19 = TIME（#55。NO DEATH のときだけ。値は PDraw が $203E10 から作る）   # 18 = CUBE FLASH（#48。キューブラッシュだけ）   # 17 = HIT DISP（#38。いつも出す）
+                         ('PS_HC0', 'PS_HC1', HD_FLAG, 0)]:   # 22 = HUNTER DISP（#96。いつも出す。ON で段4に次のハンターまでの秒）   # 21 = HUNTER TIME（#92。キューブラッシュ以外）   # 20 = CUBE SE（#60。キューブラッシュだけ。CUBE FLASH の下）   # 19 = TIME（#55。NO DEATH のときだけ。値は PDraw が $203E10 から作る）   # 18 = CUBE FLASH（#48。キューブラッシュだけ）   # 17 = HIT DISP（#38。いつも出す）
         blob.extend(struct.pack('>IIII', lab[a], lab[b], f, lab[vt] if vt else 0))
     # STAGE DISP のエリア: 面1〜10 × 12。本来のエリア（英字）だけ（❶〜❹ は使わない＝手前の英字のまま。2026-10-28 管理者）
     #   STLAB = 英字（残りは 0）、STPRG = その開始進行度（メニューの表 PROGTBL と同じ値）
@@ -844,6 +845,7 @@ mi_ah:  move.b  (a0),(a1)+
         clr.b   $203f0c.l
         clr.b   $203f34.l       ; CUBE COLOR
         clr.b   $203e2a.l       ; CUBE FLASH（#48・#57・#73）
+        clr.b   HD_FLAG.l       ; HUNTER DISP（#96）
         move.b  #1,$203e23.l    ; CUBE SE（#60）: 初期値は 1E（#94）
         lea     $100830.l,a0    ; #94 くっついたキューブの分の音の控え（サブのRAM $100830〜$1008EF）を消す
         moveq   #47,d0
@@ -2606,7 +2608,8 @@ PI_CF   = 18
 PI_CS   = 20               ; #60 CUBE SE
 PI_TIME = 19               ; #55 NO DEATH の残り時間（読むだけ。値は PDraw が作る）
 HT_VAL  = $203e2b
-PI_HC   = 22               ; #96 HUNTER COUNT（読むだけ）
+HD_FLAG = $2039c6
+PI_HC   = 22               ; #96 HUNTER DISP（ON/OFF）
 PI_HT   = 21               ; #92 HUNTER TIME（閉じてから何秒後にオプションハンターを出すか。値 HT_VAL: 0=OFF 1〜100=0〜99秒。再開のときメインの HtApply が使う）
 ; ---- 出す項目の表を作る: いつもの6つ ＋ NO DEATH なら装備と MISS ＋ キューブラッシュならキューブの5つ。d6 = 数 ----
 PMap:   lea     V_PMAP.l,a0
@@ -2625,7 +2628,7 @@ pm_nt:
         beq.s   pm_nh
         move.b  #PI_HIT,(a0)+
         move.b  #PI_HT,(a0)+    ; HUNTER TIME（#92）もキューブラッシュのほかで出す
-        move.b  #PI_HC,(a0)+    ; HUNTER COUNT（#96）はその下
+        move.b  #PI_HC,(a0)+    ; HUNTER DISP（#96）はその下
 pm_nh:
         cmpi.b  #1,$203f0b.l    ; 装備と MISS は NO DEATH のときだけ（2026-10-29 管理者。INVINCIBLE はリリースで外すので）
         bne.s   pm_c
@@ -2646,7 +2649,7 @@ pm_k:   cmpi.b  #PI_CUBE+3,d0   ; CUBE LINE H は出さない（#49。CUBE LINE 
 pm_k2:  addq.b  #1,d0
         cmpi.b  #PI_CUBE+5,d0
         bcs.s   pm_k
-        move.b  #PI_HC,(a0)+    ; キューブラッシュでは HUNTER COUNT（#96）をキューブの項目の下に
+        move.b  #PI_HC,(a0)+    ; キューブラッシュでは HUNTER DISP（#96）をキューブの項目の下に
 pm_x:   move.l  a0,d6
         subi.l  #V_PMAP,d6
         move.b  d6,V_PCNT.l
@@ -2750,8 +2753,6 @@ pd_u:   movem.l d4/a2,-(a7)
         beq.w   pd_tm
         cmpi.b  #PI_HT,0(a3,d4.w)
         beq.w   pd_ht
-        cmpi.b  #PI_HC,0(a3,d4.w)
-        beq.w   pd_hc
         move.l  8(a2),d0
         beq.s   pd_nx
         movea.l d0,a3
@@ -2814,11 +2815,66 @@ pt_ok:  divu    #60,d5          ; 下位 = 秒
         lea     V_TMP.l,a0
         bra.w   pd_v
 
-; ---- HUNTER COUNT（#96）: 次のハンターまでの秒 = ハンターの時間 ÷ (60 × オプションの数)。オプションなしは数えないので「---」----
-pd_hc:  lea     HC_NO.l,a0
+; ---- HUNTER DISP（#96）: 段4 の右上（桁38〜50。POS DISP が出ているときは桁24〜36）に「HUNTER>nnnn S」= 次のハンターまでの秒（ハンターの時間 ÷ (60 × オプションの数)）。
+;      オプションなしは数えないので「---」。ボス戦などで止まっている間はその時点の残り。HUNTER TIME で変えると再開した瞬間から変わる。
+;      NO DEATH の残り30秒の表示（段4・桁27〜）が出ている間は出さない
+V_HDL   = $1036ca          ; 出しているか（OFF にしたら消す）
+HuntDisp: tst.b MBS_RUN.l
+        beq.w   hd_x
+        cmpi.b  #2,TOPSTATE.l
+        bne.w   hd_x
+        move.w  $20101e.l,d0    ; 面が始まってから（fr と同じ判定）
+        or.w    $20109e.l,d0
+        beq.w   hd_x
+        tst.b   HD_FLAG.l
+        beq.s   hd_off
+        tst.b   $203e1a.l       ; NO DEATH の残り時間が出ている間は譲る
+        beq.s   hd_on
+        cmpi.l  #1800,$203e10.l
+        bhi.s   hd_on
+hd_off: tst.b   V_HDL.l
+        beq.w   hd_x
+        clr.b   V_HDL.l
+        move.w  #24,d0
+        move.w  #4,d1
+        moveq   #12,d7
+        jsr     ClrFld.l
+        tst.b   $203f2b.l       ; POS DISP が出ていなければ右側も消す
+        bne.w   hd_x
+        move.w  #38,d0
+        move.w  #4,d1
+        moveq   #12,d7
+        jmp     ClrFld.l
+hd_on:  move.b  #1,V_HDL.l
+        move.w  FRAMECNT.l,d0   ; 4フレームに1回（NO DEATH の表示と同じ 0）
+        andi.w  #3,d0
+        bne.w   hd_x
+        move.w  #24,d3          ; 右上（桁38〜50）。POS DISP が右上を使っているときはその左（桁24〜36）
+        tst.b   $203f2b.l
+        bne.s   hd_p
+        move.w  #24,d0
+        move.w  #4,d1
+        moveq   #12,d7
+        jsr     ClrFld.l        ; 左に出していた跡を消す
+        move.w  #38,d3
+hd_p:   move.w  d3,-(a7)
+        lea     HD_T.l,a0
+        move.w  d3,d0
+        move.w  #4,d1
+        move.b  #ATTRLAB,d2
+        jsr     PutStr.l
+        bsr.w   HcStr
+        move.w  (a7)+,d0
+        addq.w  #7,d0
+        move.w  #4,d1
+        moveq   #0,d2
+        jmp     PutStr.l
+hd_x:   rts
+; a0 = 「nnnn S」か「---   」
+HcStr:  lea     HC_NO.l,a0
         moveq   #7,d1
         and.b   $201068.l,d1
-        beq.w   pd_v
+        beq.w   hc_r
         mulu    #60,d1
         moveq   #0,d5
         move.w  $203e2c.l,d5
@@ -2843,7 +2899,7 @@ hc_e:   lea     V_TMP+4.l,a0
         move.b  #$53,(a0)+      ; S
         clr.b   (a0)
         lea     V_TMP.l,a0
-        bra.w   pd_v
+hc_r:   rts
 
 ; ---- HUNTER TIME（#92）: OFF か「nn SEC」 ----
 pd_ht:  lea     HT_OFF.l,a0
