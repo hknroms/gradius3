@@ -91,7 +91,7 @@ body:
     id: what
     attributes:
       label: What happened
-      description: What happened, and what you expected instead. For "Several things at once", paste all your play notes here (other fields can be left blank)
+      description: What happened, and what you expected instead. For "Several things at once", paste all your play notes here (other fields can be left blank). We do not look at other people's mods or analysis, so please do not include such links; just describe what happened
     validations:
       required: true
   - type: textarea

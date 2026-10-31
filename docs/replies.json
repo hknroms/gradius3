@@ -5,10 +5,10 @@
    "issue": 95,
    "date": "2026-11-01",
    "title": "スコアなどの「0」の字が乱れる",
-   "body": "ご報告ありがとうございます。同じ件のご報告（#90）をいただいていて、原因が分かり直しました（次の版に入ります）。キューブが地形にくっつくとき、その絵を描き込む先の字が、場所によって数字の「0」の字になっていました。",
+   "body": "ご報告ありがとうございます。同じ件のご報告（#90）をいただいていて、原因が分かり直しました（次の版に入ります）。キューブが地形にくっつくとき、その絵を描き込む先の字が、場所によって数字の「0」の字になっていました。なお、ほかの方の改造や解析の情報は、こちらでは見ないことにしています。お手数ですが、次からはリンクは付けずに、起きたことだけを教えてください。",
    "en": {
     "title": "The \"0\" character in the score gets garbled",
-    "body": "Thank you for the report. We had received the same report (#90), found the cause, and fixed it (in the next version). When a cube sticks to the terrain, its image was sometimes drawn into the character for the digit \"0\"."
+    "body": "Thank you for the report. We had received the same report (#90), found the cause, and fixed it (in the next version). When a cube sticks to the terrain, its image was sometimes drawn into the character for the digit \"0\". Please note that we do not look at other people's mods or analysis. Next time, please do not include such links; just tell us what happened."
    }
   },
   {
