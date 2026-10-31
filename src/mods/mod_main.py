@@ -24,7 +24,7 @@
 import os
 BOSSRUSH = os.environ.get('BOSSRUSH') == '1'          # BOSS RUSH モード（v0.5.0 から外した。後の版で戻す）。mod_menu と同じ
 EXTRA_AREAS = os.environ.get('EXTRA_AREAS') == '1'
-RESPAWN = os.environ.get('RESPAWN') == '1'   # #35 その場復活（0.5.2 には入れない。次の版から。mod_menu と同じ）    # 場所を調整して足した復活地点（❶〜❹。10面 ❶ は残す）。mod_menu と同じ
+RESPAWN = os.environ.get('RESPAWN', '1') == '1'   # #35 その場復活（v0.5.3 から既定で入る。RESPAWN=0 で外せる）
 ND_FRAMES = 36000        # NO DEATH（#36）の1クレジットの時間（フレーム。10分）
 ND_LEFT = 0x103e10       # NO DEATH の残りフレーム.l（共有RAM。以前ボスラッシュの表を置いていた所）
 ND_FLAG = 0x103e1a       # NO DEATH の印（共有RAM。MODE 1=NO DEATH と MODE 3=CUBE NO DEATH で立つ。#39）
