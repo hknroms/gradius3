@@ -1206,7 +1206,7 @@ mf_bg:  move.b  (a0)+,(a1)+
         jsr     MenuInit.l
         move.b  #1,V_INIT.l
 mf_run:
-        move.w  #42,d0          ; PUSH START: 右上の一番上（行3・桁42〜51）で点滅（約0.5秒ごと。2026-10-31 管理者）
+        move.w  #41,d0          ; PUSH START: 右上の一番上（行3・桁41〜50）で点滅（約0.5秒ごと。2026-10-31 管理者。右端から1字左へ）
         move.w  #3,d1
         btst    #5,$203951.l    ; FRAMECNT の下位
         beq.s   mf_pc
