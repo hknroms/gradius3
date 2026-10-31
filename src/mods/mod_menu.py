@@ -13,6 +13,7 @@ import struct
 import os
 EXTRA_AREAS = os.environ.get('EXTRA_AREAS') == '1'
 BOSSRUSH = os.environ.get('BOSSRUSH') == '1'
+RESPAWN = os.environ.get('RESPAWN') == '1'   # #35 その場復活（0.5.2 には入れない。次の版から。RESPAWN=1 でビルド）
 NOINV = os.environ.get('NO_INV') == '1'   # スタートメニュー・ポーズの INVINCIBLE を外す（一般公開のとき。NO_INV=1。2026-10-30 管理者：今は残す）
 # 各行の表示（英字は普通の文字、数字は白抜き ❶〜❹）
 _W = lambda n: '#%d' % n
@@ -54,6 +55,7 @@ ROW_ORDER = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 10]
 ITEMS = [
     ('INVINCIBLE', 1, 0, 1, 0x20, ['OFF', 'ON'], 0),   # 一時的な項目（無敵）
     ('MODE',      1, 0, 4 if BOSSRUSH else 3, 0x0b, ['NORMAL', 'NO DEATH', 'CUBE RUSH', 'CUBE NO DEATH', 'BOSS RUSH'][:5 if BOSSRUSH else 4], 0),   # 0=NORMAL 1=NO DEATH(#36) 2=CUBE RUSH 3=CUBE NO DEATH(#39。mf_go で 2 に変換して ND_FLAG=1) 4=BOSS RUSH
+] + ([('RESPAWN',   1, 0, 1, 0x3e, ['CHECKPOINT', 'ON THE SPOT'], 0)] if RESPAWN else []) + [   # #35 その場復活（MODE が NORMAL のときだけ選べる。サブ RspSub が見る）
     ('LOOP',      0, 1, 99, 0x09, None, 1),
 ] + [(STAGE_LABELS[i], 3, i + 1, AREAS[i], 0x08, None, 0) for i in ROW_ORDER] + [
     ('CUBE HEIGHT', 1, 0, 16, 0x35, ['RANDOM'] + [str(i) for i in range(1, 17)], 0),   # キューブラッシュの並び: 3つとも RANDOM = 純正のまま
@@ -65,7 +67,7 @@ ITEMS = [
     ('FULL POWER CAPSULE', 1, 0, 7, 0x23, ['OFF', 'SPEEDUP', 'MISSILE', 'DOUBLE', 'LASER', 'OPTION', '_', '\x8c'], 6),   # フル装備コマンドの後のカプセルゲージの位置。'_'=? / 0x8c=!（描き足した字）
 ]
 # 各項目の画面の行（可視は行2〜29）。面の表の後・CUBE の後に1行ずつ空ける
-ROWS = [2, 3, 5] + list(range(7, 19)) + [20, 21, 22] + [24, 25, 26, 27]   # INVINCIBLE が一番上、最下段は PUSH START
+ROWS = ([2, 3, 4, 5] if RESPAWN else [2, 3, 5]) + list(range(7, 19)) + [20, 21, 22] + [24, 25, 26, 27]   # INVINCIBLE が一番上、最下段は PUSH START
 assert len(ROWS) == len(ITEMS)
 PLUS_ROWS = ['........', '...f....', '...f9...', '.ffffff.', '..9f9999', '...f9...', '....9...', '........']   # ゲームの文字と同じ傾き・影
 PLUS_GFX = bytes(int(r[i] if r[i] != '.' else '0', 16) << 4 | int(r[i+1] if r[i+1] != '.' else '0', 16) for r in PLUS_ROWS for i in range(0, 8, 2))
@@ -212,6 +214,7 @@ ATTR_SELGRID = 0x80      # 選択中のマスの色（パレット4: アトラ�
 ATTR_DIS = 0xa0          # MODE で使われないマスの色（パレット5: 暗い青紫）
 NITEM = len(ITEMS)
 CUBE0 = [it[0] for it in ITEMS].index('CUBE HEIGHT')   # CUBE HEIGHT/SHIFT/TYPE の最初の項目番号
+RSPI = [it[0] for it in ITEMS].index('RESPAWN') if RESPAWN else 255   # #35 RESPAWN の項目番号
 # 可視領域は タイル列12〜51 / 行2〜29 (320x224)。それに合わせて配置
 ROW0, COL_LABEL, COL_VAL, COL_CUR = 4, 14, 35, 12   # 値の列（2026-10-28 に 29→35）
 TILE_A = 0x24c000
@@ -552,7 +555,9 @@ NOINV_SKIP
         bne.s   ck_x
 ck_sk:  moveq   #1,d3
         bra.s   ck_x
-ck_c:   cmpi.b  #2,$203f0b.l   ; CUBE RUSH または CUBE NO DEATH ではキューブの3行を飛ばさない
+ck_c:
+RSP_SKIP
+        cmpi.b  #2,$203f0b.l   ; CUBE RUSH または CUBE NO DEATH ではキューブの3行を飛ばさない
         beq.s   ck_x
         cmpi.b  #3,$203f0b.l
         beq.s   ck_x
@@ -2543,7 +2548,15 @@ pf_go:  move.b  d0,MBS_PAUS.l
 pf_ret: rts
 """
 
+RSP_SKIP_SRC = '''        cmpi.b  #RSPI,d7        ; #35 RESPAWN の行: MODE が NORMAL 以外では選べない（RESPAWN=1 のときだけ）
+        bne.s   ck_c2
+        tst.b   $203f0b.l
+        bne.s   ck_sk
+        bra.s   ck_x
+ck_c2:
+'''
 def _noinv(t):
+    t = t.replace('RSP_SKIP\n', RSP_SKIP_SRC if RESPAWN else '')
     if NOINV:
         t = t.replace('NOINV_SKIP\n', '        bra.s   ck_sk           ; リリース: INVINCIBLE の行はいつも飛ばす\n')
         t = t.replace('NOINV_DRAW\n', '        tst.b   d7              ; リリース: INVINCIBLE の行は描かない\n        beq.w   da_next\n')
@@ -2555,4 +2568,4 @@ def _noinv(t):
         t = t.replace('NOINV_CUR\n', '        clr.b   V_CUR.l\n')
     return t
 def source(lab):
-    return _noinv(('GRIDCOL = %d\nATTRSELGRID = %d\nATTRDIS = %d\nCUBE0 = %d\n' % (GRID_COL, ATTR_SELGRID, ATTR_DIS, CUBE0)) + (ENGINE + ENGINE2 + PAUSE.replace('%', '%%')) % {'nitem': NITEM, 'row0': ROW0, 'colcur': COL_CUR, 'collab': COL_LABEL, 'colval': COL_VAL, 'attr': ATTR_TXT, 'attrsel': ATTR_SEL})
+    return _noinv(('GRIDCOL = %d\nATTRSELGRID = %d\nATTRDIS = %d\nCUBE0 = %d\nRSPI = %d\n' % (GRID_COL, ATTR_SELGRID, ATTR_DIS, CUBE0, RSPI)) + (ENGINE + ENGINE2 + PAUSE.replace('%', '%%')) % {'nitem': NITEM, 'row0': ROW0, 'colcur': COL_CUR, 'collab': COL_LABEL, 'colval': COL_VAL, 'attr': ATTR_TXT, 'attrsel': ATTR_SEL})

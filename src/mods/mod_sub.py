@@ -279,6 +279,51 @@ nd_n:   lea     $80(a0),a0
         dbf     d2,nd_p
 nd_x:   rts
 
+; ---- #35 その場復活 ----（RESPAWN=1 のときだけ入る。;RSPBEGIN〜;RSPEND）
+;RSPBEGIN
+; 毎フレーム、「その場復活してよいか」を $203816 に置く（メインの Rsp が爆発の終わりで見る）:
+;   改造プレイ・RESPAWN=ON THE SPOT（MB+$3E）・MODE=NORMAL・1人（2P の残機 $1010D0 が 0）・残機（BCD）が 2 以上。
+;   最後の1機・4面（3D は別の自機の処理で Rsp を通らない）は純正どおり復活地点から。
+; 復活の後の無敵 $203817（メインが 180 を置く。メインの InvChk が見る）を、自機を動かせる間（状態 3）だけ減らし、点滅させる
+; （自機の先頭 $201000 を 0 / $80。隠したかを $203818 に覚えておき、登場中（状態 1）以外の状態になったらやめて戻す）。
+RspSub:
+        moveq   #0,d0
+        tst.b   MBS_RUN.l
+        beq.s   rs_set
+        tst.b   $203f3e.l       ; RESPAWN（0=CHECKPOINT 1=ON THE SPOT）
+        beq.s   rs_set
+        tst.b   $203f0b.l       ; MODE = NORMAL だけ
+        bne.s   rs_set
+        tst.b   $2010d0.l       ; 2P の残機（1人プレイでは 0）
+        bne.s   rs_set
+        cmpi.b  #1,$201050.l    ; 残機 2 以上
+        bls.s   rs_set
+        moveq   #1,d0
+rs_set: move.b  d0,$203816.l
+        tst.b   $203817.l
+        beq.s   rs_x
+        cmpi.b  #1,MBS_PAUS.l   ; ポーズ中は減らさない
+        beq.s   rs_x
+        move.b  $201001.l,d0    ; 自機の状態
+        cmpi.b  #1,d0           ; 登場中は待つ
+        beq.s   rs_x
+        cmpi.b  #3,d0
+        bne.s   rs_end
+        subq.b  #1,$203817.l
+        beq.s   rs_vis
+        btst    #2,$203817.l
+        beq.s   rs_vis
+        clr.b   $201000.l       ; 隠す
+        move.b  #1,$203818.l
+rs_x:   rts
+rs_end: clr.b   $203817.l
+rs_vis: tst.b   $203818.l       ; 自分で隠したときだけ戻す
+        beq.s   rs_x
+        clr.b   $203818.l
+        move.b  #$80,$201000.l
+        rts
+;RSPEND
+
 ; ---- 毎フレーム ----  (解除/ロック/自動ロックはメインCPU側で処理)
 Frame:
         moveq   #0,d0           ; #63 エンディングのスキップ: 改造プレイ・10面（$101051=9）・1P START を押している → $103E2E=1（メインの EndSkip が状態7で見る）
@@ -404,6 +449,7 @@ fr_ingame:
 fr_rk:  move.b  #1,V_RKL.l
         jsr     RankDisp.l
 fr_nr:  jsr     NdDown.l        ; #53 NO DEATH の10面の下へ降りる区間
+RSPCALL
         jsr     HitDisp.l       ; #38 当たり判定の表示
         jsr     StChk.l
         jsr     PosChk.l
@@ -578,7 +624,7 @@ DATA_BASE = 0x3a400   # 0x39800 → 0x39c00（#30）→ 0x3a000（#36 でサブ�
 WTYPE_BYTES = bytes([1,3,1, 3,1,4, 4,2,2, 2,4,3])   # TYPE A..D -> (missile, double, laser)
 
 def apply(rom):
-    import asm68, mod_menu, os
+    import asm68, mod_menu, os, re
     import mod_main
     data, dl = mod_menu.build_data(DATA_BASE)
     abs_ = [mod_main.area_table_blob(st) for st in range(10)]
@@ -640,6 +686,8 @@ def apply(rom):
     consts = ''.join('%s = $%x\n' % (k, v) for k, v in dl.items()) + 'WTYPE = $%x\n' % wt
     src = CONSTS + consts + SRC.replace(CONSTS, '', 1) + mod_menu.source(dl) + mod_edit.src()
     src = src.replace('V_INIT', 'V_INIT') 
+    if mod_menu.RESPAWN: src = src.replace('RSPCALL\n', '        jsr     RspSub.l        ; #35 その場復活\n')
+    else: src = re.sub(r';RSPBEGIN\n.*?;RSPEND\n', '', src.replace('RSPCALL\n', ''), flags=re.S)
     src = src.replace('TESTNOIRQ', 'cmpi.b  #2,TOPSTATE.l\n        bne.s   ih_go\n        jmp     $5c8.l\nih_go:' if os.environ.get('TESTNOIRQ') else '')
     b, lab = asm68.assemble('V_INIT = $103412\n' + src if 'V_INIT   =' not in src else src, SUB_FREE)
     assert SUB_FREE + len(b) <= DATA_BASE, hex(SUB_FREE + len(b))
