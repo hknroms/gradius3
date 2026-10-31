@@ -399,6 +399,7 @@ def build_data(base):
     for i in range(6): put('EN_%d' % i, b'%d     \0' % i)
     put('ED_1', b'DOUBLE\0'); put('ED_2', b'LASER \0'); put('ED_0', b'OFF   \0')
     put('PS_OFF', b'OFF\0')
+    put('PS_HC0', b'oHUNTER COUNT\0'); put('PS_HC1', b' HUNTER COUNT\0'); put('HC_NO', b'---   \0')   # #96 次のハンターまでの秒（読むだけ）
     put('PS_HT0', b'oHUNTER TIME\0'); put('PS_HT1', b' HUNTER TIME\0'); put('HT_OFF', b'OFF   \0')   # #92 閉じてから何秒後にオプションハンターを出すか
     al(); lab['HTTAB'] = base + len(blob); blob.extend(struct.pack('>I', 101))   # 値 0 = OFF（変えない）、1〜100 = 0〜99秒（文字は PDraw が作る）
     # ポーズの項目: 選択中の文字列.l 通常の文字列.l ON/OFF の場所.l(0=なし)
@@ -425,7 +426,8 @@ def build_data(base):
                          ('PS_CF0', 'PS_CF1', CF_FLAG, 'CFTAB'),
                          ('PS_TM0', 'PS_TM1', 0, 0),
                          ('PS_CS0', 'PS_CS1', CS_FLAG, 'CSTAB'),
-                         ('PS_HT0', 'PS_HT1', HT_VAL, 'HTTAB')]:   # 21 = HUNTER TIME（#92。キューブラッシュ以外）   # 20 = CUBE SE（#60。キューブラッシュだけ。CUBE FLASH の下）   # 19 = TIME（#55。NO DEATH のときだけ。値は PDraw が $203E10 から作る）   # 18 = CUBE FLASH（#48。キューブラッシュだけ）   # 17 = HIT DISP（#38。いつも出す）
+                         ('PS_HT0', 'PS_HT1', HT_VAL, 'HTTAB'),
+                         ('PS_HC0', 'PS_HC1', 0, 0)]:   # 22 = HUNTER COUNT（#96。いつも出す。値は PDraw が $203E2C から作る）   # 21 = HUNTER TIME（#92。キューブラッシュ以外）   # 20 = CUBE SE（#60。キューブラッシュだけ。CUBE FLASH の下）   # 19 = TIME（#55。NO DEATH のときだけ。値は PDraw が $203E10 から作る）   # 18 = CUBE FLASH（#48。キューブラッシュだけ）   # 17 = HIT DISP（#38。いつも出す）
         blob.extend(struct.pack('>IIII', lab[a], lab[b], f, lab[vt] if vt else 0))
     # STAGE DISP のエリア: 面1〜10 × 12。本来のエリア（英字）だけ（❶〜❹ は使わない＝手前の英字のまま。2026-10-28 管理者）
     #   STLAB = 英字（残りは 0）、STPRG = その開始進行度（メニューの表 PROGTBL と同じ値）
@@ -2604,6 +2606,7 @@ PI_CF   = 18
 PI_CS   = 20               ; #60 CUBE SE
 PI_TIME = 19               ; #55 NO DEATH の残り時間（読むだけ。値は PDraw が作る）
 HT_VAL  = $203e2b
+PI_HC   = 22               ; #96 HUNTER COUNT（読むだけ）
 PI_HT   = 21               ; #92 HUNTER TIME（閉じてから何秒後にオプションハンターを出すか。値 HT_VAL: 0=OFF 1〜100=0〜99秒。再開のときメインの HtApply が使う）
 ; ---- 出す項目の表を作る: いつもの6つ ＋ NO DEATH なら装備と MISS ＋ キューブラッシュならキューブの5つ。d6 = 数 ----
 PMap:   lea     V_PMAP.l,a0
@@ -2622,6 +2625,7 @@ pm_nt:
         beq.s   pm_nh
         move.b  #PI_HIT,(a0)+
         move.b  #PI_HT,(a0)+    ; HUNTER TIME（#92）もキューブラッシュのほかで出す
+        move.b  #PI_HC,(a0)+    ; HUNTER COUNT（#96）はその下
 pm_nh:
         cmpi.b  #1,$203f0b.l    ; 装備と MISS は NO DEATH のときだけ（2026-10-29 管理者。INVINCIBLE はリリースで外すので）
         bne.s   pm_c
@@ -2642,6 +2646,7 @@ pm_k:   cmpi.b  #PI_CUBE+3,d0   ; CUBE LINE H は出さない（#49。CUBE LINE 
 pm_k2:  addq.b  #1,d0
         cmpi.b  #PI_CUBE+5,d0
         bcs.s   pm_k
+        move.b  #PI_HC,(a0)+    ; キューブラッシュでは HUNTER COUNT（#96）をキューブの項目の下に
 pm_x:   move.l  a0,d6
         subi.l  #V_PMAP,d6
         move.b  d6,V_PCNT.l
@@ -2745,6 +2750,8 @@ pd_u:   movem.l d4/a2,-(a7)
         beq.w   pd_tm
         cmpi.b  #PI_HT,0(a3,d4.w)
         beq.w   pd_ht
+        cmpi.b  #PI_HC,0(a3,d4.w)
+        beq.w   pd_hc
         move.l  8(a2),d0
         beq.s   pd_nx
         movea.l d0,a3
@@ -2803,6 +2810,37 @@ pt_ok:  divu    #60,d5          ; 下位 = 秒
         move.b  d6,d7
         addi.b  #$30,d7
         move.b  d7,(a0)+        ; 秒の一の位
+        clr.b   (a0)
+        lea     V_TMP.l,a0
+        bra.w   pd_v
+
+; ---- HUNTER COUNT（#96）: 次のハンターまでの秒 = ハンターの時間 ÷ (60 × オプションの数)。オプションなしは数えないので「---」----
+pd_hc:  lea     HC_NO.l,a0
+        moveq   #7,d1
+        and.b   $201068.l,d1
+        beq.w   pd_v
+        mulu    #60,d1
+        moveq   #0,d5
+        move.w  $203e2c.l,d5
+        divu    d1,d5
+        andi.l  #$ffff,d5
+        lea     V_TMP+4.l,a0
+        moveq   #3,d6
+hc_d:   divu    #10,d5
+        swap    d5
+        addi.b  #$30,d5
+        move.b  d5,-(a0)
+        clr.w   d5
+        swap    d5
+        dbf     d6,hc_d
+        moveq   #2,d6           ; 上の桁の 0 は空白
+hc_z:   cmpi.b  #$30,(a0)
+        bne.s   hc_e
+        move.b  #$20,(a0)+
+        dbf     d6,hc_z
+hc_e:   lea     V_TMP+4.l,a0
+        move.b  #$20,(a0)+
+        move.b  #$53,(a0)+      ; S
         clr.b   (a0)
         lea     V_TMP.l,a0
         bra.w   pd_v

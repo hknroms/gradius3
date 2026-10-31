@@ -317,7 +317,7 @@ PauseChk:                       ; 戻り d0: 0=通常 1=止める 2=装備コマ
         move.b  MB_PAUS.l,d0
         beq.s   pc_chk
         cmpi.b  #2,d0
-        bcs.s   pc_frz
+        bcs.w   pc_frz
         beq.s   pc_res
         clr.b   MB_PAUS.l       ; 3: GAME OVER（ポーズの GAME OVER・NO DEATH の時間切れ）。いきなり状態8にすると、物体が残り・GAME OVER の表示や
         clr.b   $101050.l       ;   ネーム入れの準備が飛ばされていた（#84）。→ 残機を最後の1機にして、無敵でもやられるようにして続ける。
@@ -342,6 +342,7 @@ pc_chk: lea     $103f21.l,a0    ; 1P START: 短く押す=装備コマンド / �
         addq.b  #1,(a0)
         cmpi.b  #60,(a0)
         bne.s   pc_no
+        move.w  $42e70.l,$103e2c.l  ; #96 ポーズの HUNTER COUNT 用にハンターの時間を写す（サブはメインのRAMを読めない）
         move.b  #1,MB_PAUS.l
 pc_frz: moveq   #1,d0
         rts
