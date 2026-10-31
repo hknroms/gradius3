@@ -131,6 +131,17 @@ def rock_anim():
     steps += [(4, X(0x610)), (4, X(0x620)), (4, X(0x630)), (4, X(0x6b0))]   # 破裂
     steps += [(50, bytes(8))]                                                # 間
     return b''.join(bytes([n]) + e for n, e in steps) + b'\0'
+CUBE_DIM = float(os.environ.get('CUBEDIM', '0.70'))   # キューブの MODE でないときの回るキューブの明るさ（背景は 0.40。2026-10-31 管理者）
+def cube_pal():
+    import mod_menubg
+    b = bytes.fromhex(mod_menubg.CUBE_PAL_HEX)
+    d = b''
+    for i in range(0, 32, 2):
+        w = int.from_bytes(b[i:i+2], 'big')
+        r, g, bl = (w >> 10) & 31, (w >> 5) & 31, w & 31
+        r, g, bl = (int(v * CUBE_DIM + .5) for v in (r, g, bl))
+        d += ((r << 10) | (g << 5) | bl).to_bytes(2, 'big')
+    return b + d
 def cube_anim():
     return b''.join(_spr_ent(0x7e, c, 3, 0x1a, CUBE_C[0], CUBE_C[1], 0) for c in (0xb40, 0xb44, 0xb48, 0xb4c))   # 0x1a = キューブ（パレット13）
 def dot_palette():
@@ -312,6 +323,7 @@ def build_data(base):
     put('DOTPAL', dot_palette())      # #75
     put('RKANIM', rock_anim())       # #75 5面ボスの石
     put('CBANIM', cube_anim())       # #75 回るキューブ（4枚×8バイト）
+    put('CBPAL', cube_pal())         # #75 回るキューブの色: 明るさ100%（MODE がキューブ）/ CUBE_DIM（それ以外）
     put('SHTILT', bytes([0xba, 0xbc, 0xba, 0xb8]))   # #75 シールドの見本の自機の傾き（水平・上・水平・下。ゲームで上下に動かしたときの絵の番号）
     put('SHFLM', struct.pack('>4H', 0x3a7c, 0x2594, 0x679f, 0x3e9e))   # 炎の色 1・2番の2組（ゲーム中の自機の色を記録した値）
     put('SHRED', struct.pack('>32H', *([(31 - 2 * i) << 10 for i in range(16)] + [(2 * i) << 10 for i in range(16)])))   # 8番の赤い光（31→1、0→30。4フレームごと）
@@ -1158,6 +1170,17 @@ sh_r4:  move.b  (a0)+,(a1)
         addq.l  #2,a1
         dbf     d1,sh_r4
 ; #75 回るキューブ（表の3番）: キューブの並びの見本を出していない間だけ。8フレームごとに4枚
+;     色（スプライトのパレット13 = $2021A0）: MODE がキューブ（4・5）なら明るいまま、それ以外は暗め（CBPAL の後半）
+        lea     CBPAL.l,a0
+        move.b  $203f0b.l,d0
+        subq.b  #4,d0
+        cmpi.b  #1,d0
+        bls.s   sh_qb
+        lea     32(a0),a0
+sh_qb:  lea     $2021a0.l,a1
+        moveq   #7,d1
+sh_qc:  move.l  (a0)+,(a1)+
+        dbf     d1,sh_qc
         lea     $2c0831.l,a1
         tst.b   V_DOTV.l
         bne.s   sh_q0

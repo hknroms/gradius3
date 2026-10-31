@@ -6,6 +6,7 @@ import os, struct
 D = os.path.join(os.path.dirname(__file__), 'menubg')
 F = 7440
 DIM = 0.40
+CUBE_PAL_HEX = '000000000000000000aa00ec04ce115015721db42e3642984efa5f5c7bde0844'   # #75 キューブ（9面）の色・明るさ100%
 COLSHIFT = 10
 SHD_X, SHD_Y = int(os.environ.get('SHDX', '333')), int(os.environ.get('SHDY', '209'))   # #75 SHIELD COLOR を一番下の行へ移したので 185 → 209（上の行へはみ出す）。217（1行下げ）→ 209 に戻した
 FF_DX, FF_DY = int(os.environ.get('FFDX', '14')), int(os.environ.get('FFDY', '0'))
@@ -59,7 +60,7 @@ def blobs():
     # #75 手前の飾りの色（明るさ100%。ゲーム中の色を記録した値）: 2 = 5面ボスの石（ゲームではパレット12）・6 = 爆発・13 = キューブ（9面）
     for k, h in ((2, '000000000000000000001882290431483dab4e2f5a926b160000000000000000'),
                  (6, '0000000000010000000000ae00120d3621db3a7f4f7f639e4a5339d0294b0000'),
-                 (13, '000000000000000000aa00ec04ce115015721db42e3642984efa5f5c7bde0844')):
+                 (13, CUBE_PAL_HEX)):
         p[k * 32:k * 32 + 32] = bytes.fromhex(h)
     ry, rx = (256 - y + FF_DY) & 0x1ff, x + FF_DX
     sp[8:16] = ent(0x3a, 0x81, 0x70, 0x06, ry + 8, rx - 14)
