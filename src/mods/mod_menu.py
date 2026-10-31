@@ -353,43 +353,43 @@ def build_data(base):
     al(); lab['BANGGFX'] = base + len(blob)
     blob.extend(BANG_GFX)
     al(); lab['HBGFX'] = base + len(blob); blob.extend(hb_mark_tile())   # #38 敵・弾の当たりの升目の印（文字 HB_MARK）
-    put('PS_C0', b'>CONTINUE\0')
+    put('PS_C0', b'oCONTINUE\0')
     put('PS_C1', b' CONTINUE\0')
-    put('PS_G0', b'>GAME OVER\0')
+    put('PS_G0', b'oGAME OVER\0')
     put('PS_G1', b' GAME OVER\0')
-    put('PS_I0', b'>INVINCIBLE\0')
+    put('PS_I0', b'oINVINCIBLE\0')
     put('PS_I1', b' INVINCIBLE\0')
-    put('PS_R0', b'>RANK DISP\0')
+    put('PS_R0', b'oRANK DISP\0')
     put('PS_R1', b' RANK DISP\0')
-    put('PS_Q0', b'>CUBE INFO\0')
+    put('PS_Q0', b'oCUBE INFO\0')
     put('PS_Q1', b' CUBE INFO\0')
-    put('PS_K0', b'>CUBE COLOR\0')
+    put('PS_K0', b'oCUBE COLOR\0')
     put('PS_K1', b' CUBE COLOR\0')
-    put('PS_S0', b'>STAGE DISP\0')   # #30 周回・面・エリア・スピード（2P のスコアの場所）
+    put('PS_S0', b'oSTAGE DISP\0')   # #30 周回・面・エリア・スピード（2P のスコアの場所）
     put('PS_S1', b' STAGE DISP\0')
-    put('PS_P0', b'>POS DISP\0')
+    put('PS_P0', b'oPOS DISP\0')
     put('PS_P1', b' POS DISP\0')
-    put('PS_U0', b'>CUBE HUNTER\0')
+    put('PS_U0', b'oCUBE HUNTER\0')
     put('PS_U1', b' CUBE HUNTER\0')
     put('PS_ON', b'ON \0')
-    put('PS_CF0', b'>CUBE FLASH\0')   # #48
+    put('PS_CF0', b'oCUBE FLASH\0')   # #48
     put('PS_CF1', b' CUBE FLASH\0')
-    put('PS_HB0', b'>HIT DISP\0')   # #38 当たり判定の表示
+    put('PS_HB0', b'oHIT DISP\0')   # #38 当たり判定の表示
     put('PS_HB1', b' HIT DISP\0')
-    put('PS_CS0', b'>CUBE SE\0')     # #60 キューブが反応する瞬間の音
+    put('PS_CS0', b'oCUBE SE\0')     # #60 キューブが反応する瞬間の音
     put('PS_CS1', b' CUBE SE\0')
-    put('PS_TM0', b'>TIME\0')       # #55 NO DEATH の残り時間（読むだけ）
+    put('PS_TM0', b'oTIME\0')       # #55 NO DEATH の残り時間（読むだけ）
     put('PS_TM1', b' TIME\0')
     # NO DEATH のときだけ出す: 装備（#36 の続き。再開のときにメインがやり直す）と MISS（自分で死ぬ）
     for k, t in [('ES', 'SPEED'), ('EM', 'MISSILE'), ('ED', 'DOUBLE/LASER'), ('EO', 'OPTION'), ('EH', 'SHIELD'), ('X', 'MISS')]:
-        put('PS_%s0' % k, b'>' + t.encode() + b'\0'); put('PS_%s1' % k, b' ' + t.encode() + b'\0')
+        put('PS_%s0' % k, b'o' + t.encode() + b'\0'); put('PS_%s1' % k, b' ' + t.encode() + b'\0')
     for i in range(6): put('EN_%d' % i, b'%d     \0' % i)
     put('ED_1', b'DOUBLE\0'); put('ED_2', b'LASER \0'); put('ED_0', b'OFF   \0')
     put('PS_OFF', b'OFF\0')
     # ポーズの項目: 選択中の文字列.l 通常の文字列.l ON/OFF の場所.l(0=なし)
-    put('PS_V0', b'>CUBE LINE\0')     # #49 縦と横をまとめた（値は縦の値。横はこれに合わせる）
+    put('PS_V0', b'oCUBE LINE\0')     # #49 縦と横をまとめた（値は縦の値。横はこれに合わせる）
     put('PS_V1', b' CUBE LINE\0')
-    put('PS_H0', b'>CUBE LINE H\0')
+    put('PS_H0', b'oCUBE LINE H\0')
     put('PS_H1', b' CUBE LINE H\0')
     put('CF_0', b'OFF   \0'); put('CF_1', b'SHORT \0'); put('CF_2', b'NORMAL\0'); put('CF_3', b'LONG  \0')   # #49 CUBE FLASH
     put('LV_0', b'OFF  \0'); put('LV_1', b'ROUGH\0'); put('LV_2', b'FINE \0'); put('LV_3', b'EDGE \0'); put('LH_2', b'LINE \0')
@@ -568,7 +568,7 @@ da_ra:  lea     ROWMAP.l,a1
         clr.b   1(a0)
         cmp.b   V_CUR.l,d7
         bne.s   da_nc
-        move.b  #$3e,(a0)
+        move.b  #$6f,(a0)       ; カーソル = 'o' − $30 = 文字 $3F（残機の自機のマーク。#85）
 da_nc:  move.w  #%(colcur)d,d0
         move.b  #%(attr)d,d2
         jsr     PutStr.l
@@ -2657,7 +2657,7 @@ pr_n:   addq.w  #2,a1
         dbf     d6,pr_row
         rts
 
-; 1行描く: a0=文字列(選択中なら '>' 付き), d4=何番目か → 段 V_PY+1+d4
+; 1行描く: a0=文字列(選択中なら 'o' 付き = 自機のマーク $3F。#85), d4=何番目か → 段 V_PY+1+d4
 PLine:  move.w  #PX+1,d0
         bsr.w   PYd1
         add.w   d4,d1
