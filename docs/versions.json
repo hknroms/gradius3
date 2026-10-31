@@ -1,6 +1,105 @@
 {
  "versions": [
   {
+   "version": "0.5.2",
+   "date": "2026-10-31",
+   "build": "2026-10-31 14:55",
+   "title": "エンディングのスキップ／CUBE SE（キューブが反応する瞬間の音）／解除のコマンドを戻した（音つき）／ポーズまわりの修正",
+   "changes": [
+    "スタートメニューから始めたときだけ、エンディング中に 1P START を押すとエンディングを飛ばして次の周に進む。START を押したままエンディングに入ったときは、いったん離して押し直したときだけ飛ばす",
+    "キューブラッシュのポーズに CUBE SE を追加：キューブが反応する（自機を狙って加速する）瞬間に効果音を鳴らす。OFF か、音を4つ（SE 0E＝装備選択のカーソルの音・SE 29・SE 01・SE 1E）から選ぶ",
+    "メニューに入るための解除のコマンドを戻した：ゲーム中でないときに レバー上＋A → 両方離す → レバー下＋A → 両方離す（各段階3秒以内）。解除できると音が鳴る。遊ばずに約120秒たつと自動でロック（ロックのコマンドは無くした）",
+    "テストモードから CHARACTER ROM CHECK・COLOR TEST・COIN COUNTER TEST を外した（改造のための容量を作るため）。SCREEN CHECK・IO TEST・SOUND TEST・DIP SW SELECT は今までどおり",
+    "キューブラッシュのポーズで CUBE FLASH の行を CUBE COLOR の下・CUBE LINE の上に移した。キューブの区間を終えて頭から始め直したとき、CUBE FLASH と HIT DISP が OFF に戻っていたのを直した",
+    "スタートメニューで MODE を CUBE NO DEATH からほかのモードに切り替えると、最後の H の字が残っていたのを直した",
+    "NO DEATH の10面で、下へ降りる区間の後しばらく自機が画面の真ん中より上に行けなかったのを直した"
+   ],
+   "verified": [
+    "エンディング中に START を押すと飛ばして2周目1面が普通に始まること。START を押したままエンディングに入ると飛ばず、離して押し直すと飛ぶこと（MAME）",
+    "CUBE SE で、キューブが反応した回数と音が鳴った回数が同じ（46回中46回）で、遅れは2フレームであること（MAME）",
+    "解除のコマンドで音が鳴り、その後レバー上＋START でメニューに入ること。解除しないとメニューに入らず純正どおり始まること。デモ・タイトルのどの画面でも解除できること。解除から120秒で自動でロックされること（MAME）",
+    "テストモードが SCREEN CHECK → IO TEST → SOUND TEST → DIP SW SELECT の順に切り替わること（MAME）",
+    "START だけで始めた通常プレイが、前の版と同じように進むこと（3万フレーム・1面〜3面の始めまで、MAME）",
+    "メニューの各モードとディップスイッチ SW1:8 の OFF / ON で、NO DEATH の時間・キューブラッシュの残機・装備コマンドの回数が前の版と同じであること（MAME）"
+   ],
+   "known": [
+    "CUBE SE の音の種類は仮のもので、あとで変えるかもしれない",
+    "テストモードの CHARACTER ROM CHECK・COLOR TEST・COIN COUNTER TEST は使えない",
+    "ディップスイッチ SW1:8 を ON にすると、コイン2（2つ目のコイン投入口）の料金設定が「2枚以上で1クレジット」側だけになり、1枚1クレジットなどが選べなくなります（初期値の 1枚1クレは SW1:8 が OFF のときの設定です）。コイン2を使っていない場合は影響ありません",
+    "面クリア直後の即死の修正は、実機での確認がまだ",
+    "HIT DISP は地形の当たり（見えている地形の絵そのもの）は描かない。ON にすると処理が少し増える",
+    "CUBE FLASH が ON の間、CUBE COLOR の灰色（反応しないキューブ）は出ず、元の色になる。点滅の白の間に1フレームだけ元の色に戻ることがある",
+    "パワーアップで5速にしてから、それより遅い SPEED の装備コマンドを使うと、ゲージの SPEED UP の字が消えたままになる",
+    "オプションハンターは1周目の序盤など、ゲームの条件によってはもともと出ない（タイマーが進まない）",
+    "装備コマンドは装備を足すだけなので、レーザー・ダブルを持っている状態からミサイル＋START を押してもノーマルショットには戻らない",
+    "無敵中は壁の中に入り込める"
+   ],
+   "en": {
+    "title": "Ending skip / CUBE SE (a sound when a cube reacts) / unlock command restored (with a sound) / pause menu fixes",
+    "changes": [
+     "Only when you start from the start menu: pressing 1P START during the ending skips it and goes on to the next loop. If START is held when the ending begins, it skips only after you release START and press it again",
+     "Added CUBE SE to the Cube Rush pause menu: plays a sound effect at the moment a cube reacts (speeds up toward your ship). Choose OFF or one of four sounds (SE 0E = the cursor sound of the weapon select screen, SE 29, SE 01, SE 1E)",
+     "Restored the unlock command needed to enter the menu: when not in a game, Up + A → release both → Down + A → release both (each step within 3 seconds). A sound plays when it is unlocked. It locks automatically after about 120 seconds without play (the lock command was removed)",
+     "Removed CHARACTER ROM CHECK, COLOR TEST and COIN COUNTER TEST from the test mode (to make room for the mod). SCREEN CHECK, IO TEST, SOUND TEST and DIP SW SELECT work as before",
+     "In the Cube Rush pause menu, moved CUBE FLASH below CUBE COLOR and above CUBE LINE. Fixed CUBE FLASH and HIT DISP turning OFF when Cube Rush restarts from the top after the cube section",
+     "Fixed the last letter H staying on screen when switching MODE from CUBE NO DEATH to another mode in the start menu",
+     "Fixed: in NO DEATH stage 10, after the descending part, the ship could not go above the middle of the screen for a while"
+    ],
+    "verified": [
+     "Pressing START during the ending skips it and loop 2 stage 1 starts normally. Entering the ending with START held does not skip; releasing and pressing again skips (MAME)",
+     "With CUBE SE, the number of cube reactions and sounds match (46 of 46), with a delay of 2 frames (MAME)",
+     "The unlock command plays a sound, and Up + START then enters the menu. Without unlocking, the menu does not open and the game starts as in the original. Unlocking works on every demo/title screen. It locks automatically 120 seconds after unlocking (MAME)",
+     "The test mode cycles SCREEN CHECK → IO TEST → SOUND TEST → DIP SW SELECT (MAME)",
+     "Normal play started with START only proceeds the same as the previous version (30,000 frames, up to the start of stage 3, MAME)",
+     "For each menu mode and DIP switch SW1:8 OFF / ON, the NO DEATH time, Cube Rush lives and power-up command count are the same as the previous version (MAME)"
+    ],
+    "known": [
+     "The CUBE SE sounds are provisional and may change",
+     "CHARACTER ROM CHECK, COLOR TEST and COIN COUNTER TEST are not available in the test mode",
+     "Turning DIP switch SW1:8 ON also limits the Coin B (second coin slot) pricing to \"2 or more coins per credit\"; settings such as 1 Coin/1 Credit are no longer available (the default 1 Coin/1 Credit needs SW1:8 OFF). It makes no difference if you do not use the second coin slot",
+     "The fix for the sudden death right after a stage clear has not been checked on real hardware yet",
+     "HIT DISP does not show terrain hits (the visible terrain graphics are themselves the hit area). Turning it on adds a little processing",
+     "While CUBE FLASH is on, CUBE COLOR does not show gray for cubes that will not react; they keep their own color. During the white blink a cube can return to its color for one frame",
+     "If you reach speed 5 with power-ups and then use the power-up command with a slower SPEED, the SPEED UP label in the gauge stays blank",
+     "The Option Hunter does not appear at all under some game conditions, such as early in the first loop (its timer does not advance)",
+     "The power-up command only adds equipment, so pressing Missile + START while you have Laser or Double does not take you back to the normal shot",
+     "While invincible you can go inside walls"
+    ]
+   },
+   "patches": {
+    "945_r13.f15": {
+     "file": "patches/0.5.2/945_r13_f15.bps",
+     "source_crc": "706494e1",
+     "target_crc": "4a7a14dd",
+     "size": 1440
+    },
+    "945_r12.e15": {
+     "file": "patches/0.5.2/945_r12_e15.bps",
+     "source_crc": "6dcd00ab",
+     "target_crc": "4ab799e0",
+     "size": 1417
+    },
+    "945_m09.r17": {
+     "file": "patches/0.5.2/945_m09_r17.bps",
+     "source_crc": "b4a6df25",
+     "target_crc": "e5b5a804",
+     "size": 15117
+    },
+    "945_m08.n17": {
+     "file": "patches/0.5.2/945_m08_n17.bps",
+     "source_crc": "74e981d2",
+     "target_crc": "15f4c163",
+     "size": 15117
+    },
+    "945_r05.d9": {
+     "file": "patches/0.5.2/945_r05_d9.bps",
+     "source_crc": "c8c45365",
+     "target_crc": "273411a3",
+     "size": 324
+    }
+   }
+  },
+  {
    "version": "0.5.1",
    "date": "2026-10-30",
    "build": "2026-10-30 23:25",
@@ -166,38 +265,6 @@
      "While the unlock command is suspended, pressing START while holding Up or Down enters the menu even in normal play",
      "While invincible you can go inside walls"
     ]
-   },
-   "patches": {
-    "945_r13.f15": {
-     "file": "patches/0.5.0/945_r13_f15.bps",
-     "source_crc": "706494e1",
-     "target_crc": "d09cc8bb",
-     "size": 931
-    },
-    "945_r12.e15": {
-     "file": "patches/0.5.0/945_r12_e15.bps",
-     "source_crc": "6dcd00ab",
-     "target_crc": "bff2391f",
-     "size": 915
-    },
-    "945_m09.r17": {
-     "file": "patches/0.5.0/945_m09_r17.bps",
-     "source_crc": "b4a6df25",
-     "target_crc": "412991ec",
-     "size": 13430
-    },
-    "945_m08.n17": {
-     "file": "patches/0.5.0/945_m08_n17.bps",
-     "source_crc": "74e981d2",
-     "target_crc": "d7834a90",
-     "size": 13430
-    },
-    "945_r05.d9": {
-     "file": "patches/0.5.0/945_r05_d9.bps",
-     "source_crc": "c8c45365",
-     "target_crc": "273411a3",
-     "size": 324
-    }
    }
   },
   {
