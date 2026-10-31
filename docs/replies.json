@@ -2,6 +2,26 @@
  "_how": "配布ページのトップに出る「報告への回答」。Google フォームから報告してくれた方には、こちらから返事を返す手段がないので、ここに書いて気づいてもらう。要らなくなったら手で消す。新しいものを上に書く。",
  "replies": [
   {
+   "issue": 76,
+   "date": "2026-10-31",
+   "title": "CUBE COLOR を OFF にしても元の色に戻らない／5速から装備コマンドで遅くするとゲージの字が消える",
+   "body": "ご報告ありがとうございます。CUBE COLOR を ON から OFF にしたときの色は、これから調べて直します。スピードのゲージの字が消える件は #3 と同じもので、こちらも直す対象にしています（v0.5.2 の「わかっていること」に載せていたものです）。直ったら、ここと更新履歴でお知らせします。",
+   "en": {
+    "title": "Colors do not return after turning CUBE COLOR OFF / gauge label disappears after slowing down from speed 5 with the power-up command",
+    "body": "Thank you for the report. We will look into the colors after switching CUBE COLOR from ON to OFF and fix them. The missing speed gauge label is the same issue as #3, and we are going to fix it as well (it was listed under known issues in v0.5.2). We will let you know here and in the update history when it is fixed."
+   }
+  },
+  {
+   "issue": 71,
+   "date": "2026-10-31",
+   "title": "#68 の続き：PS2 版でもランク16と31の速さは同じ",
+   "body": "PS2 版でも確かめていただき、ありがとうございます。プログラムで調べた結果と一致したので安心しました。キューブラッシュについて気づいたことがあれば、またフォームから教えてください。",
+   "en": {
+    "title": "Follow-up to #68: rank 16 and 31 cube speed is the same on PS2 too",
+    "body": "Thank you for checking on the PS2 version too. It matches what we found in the program. If you notice anything else about Cube Rush, please let us know through the form."
+   }
+  },
+  {
    "issue": 69,
    "date": "2026-10-31",
    "title": "#47の続き：純正ROMと処理落ちを比べた",
@@ -25,10 +45,10 @@
    "issue": 60,
    "date": "2026-10-31",
    "title": "キューブラッシュで、キューブが自機を狙って加速する瞬間にSEを鳴らしたい／出現タイミングのフレーム表",
-   "body": "ご要望ありがとうございます。どちらも検討します。SEは、キューブが反応する瞬間に短い音（装備選択でカーソルを動かしたときの音など）を鳴らせるか調べます（v0.5.1 で入れた CUBE FLASH と同じタイミングです）。解析ページには、出現のタイミングのフレーム表を足す方向で考えています。形になったら、ここと更新履歴でお知らせします。",
+   "body": "v0.5.2 で入れました。キューブラッシュのポーズメニューの CUBE SE で、キューブが反応する（自機を狙って加速する）瞬間に音を鳴らせます。音は OFF か4種類から選べて、SE 0E がご提案の装備選択のカーソルの音です。出現のタイミングのフレーム表は、解析ページに足しました。",
    "en": {
     "title": "Play a sound when a cube turns toward the ship and speeds up in Cube Rush / a frame table of when cubes appear",
-    "body": "Thank you for the request. We will look into both. For the sound, we will check whether a short sound (such as the cursor sound on the weapon select screen) can be played at the moment a cube reacts (the same timing as CUBE FLASH added in v0.5.1). For the analysis page, we plan to add a frame table of when cubes appear. We will let you know here and in the update history when they are ready."
+    "body": "Added in v0.5.2. With CUBE SE in the Cube Rush pause menu, a sound plays at the moment a cube reacts (speeds up toward your ship). Choose OFF or one of four sounds; SE 0E is the weapon select cursor sound you suggested. The frame table of when cubes appear has been added to the analysis page."
    }
   },
   {
