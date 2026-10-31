@@ -27,6 +27,7 @@ MBS_KIND = $203f05
 MBS_PAUS = $203f06
 MBS_RUN  = $203f07
 TOPSTATE = $2037c5
+SE_REQ   = $203e24          ; 効果音の依頼（メインの StubIn が鳴らす。#60・#62）
 SV       = $103400
 V_LAST   = $103400
 V_PUD    = $103402
@@ -324,8 +325,52 @@ rs_vis: tst.b   $203818.l       ; 自分で隠したときだけ戻す
         rts
 ;RSPEND
 
-; ---- 毎フレーム ----  (解除/ロック/自動ロックはメインCPU側で処理)
+; ---- キューブが反応する瞬間の効果音（#60）: ポーズの CUBE SE（$103E23 = 0:OFF / 1〜:音の番号の表 CSE_TBL）----
+;   メインはキューブが反応したフレームで $2A を 0→1 にする（$262A2）。サブは枠ごとに前のフレームの $2A を控えておき、
+;   0→0以外 に変わった枠があれば音の依頼を置く（遅れは最大1フレーム。反応の直前の $3A=0 を見る方法は、
+;   メインとサブのフレームのずれで約4%取りこぼしたのでやめた）
+V_SEA   = $103768          ; 枠ごとの前のフレームの「反応した」（32バイト。$103768〜$103787）
+CubeSe: moveq   #0,d2
+        moveq   #0,d3
+        cmpi.b  #2,TOPSTATE.l
+        bne.s   cse_0
+        tst.b   MBS_RUN.l
+        beq.s   cse_0
+        cmpi.b  #2,$203f0b.l
+        bne.s   cse_0
+        move.b  $203e23.l,d3    ; CUBE SE（0 = OFF でも控えは更新する）
+        bra.s   cse_1
+cse_0:  rts                     ; キューブラッシュの外では何もしない（サブの処理を増やさない。純正どおりの START のプレイを変えないため）
+cse_1:  lea     $202320.l,a0
+        lea     V_SEA.l,a1
+        moveq   #31,d6
+cse_l:  moveq   #0,d0
+        tst.b   (a0)
+        beq.s   cse_n
+        cmpi.w  #$3301,$28(a0)
+        bne.s   cse_n
+        move.b  $2a(a0),d0
+        beq.s   cse_n
+        tst.b   (a1)
+        bne.s   cse_n
+        moveq   #1,d2           ; この枠がいま反応した
+cse_n:  move.b  d0,(a1)+
+        lea     $50(a0),a0
+        dbf     d6,cse_l
+        tst.b   d2
+        beq.s   cse_x
+        tst.b   d3
+        beq.s   cse_x
+        ext.w   d3
+        lea     CSE_TBL-1.l,a1
+        move.b  0(a1,d3.w),SE_REQ.l
+cse_x:  rts
+CSE_TBL: CSEDATA
+        even
+
+; ---- 毎フレーム ----
 Frame:
+        jsr     CubeSe.l        ; #60
         moveq   #0,d0           ; #63 エンディングのスキップ: 改造プレイ・10面（$101051=9）・1P START を押している → $103E2E=1（メインの EndSkip が状態7で見る）
         tst.b   MBS_RUN.l
         beq.s   fr_es
@@ -620,7 +665,7 @@ cu_t:   subq.w  #1,d2
         rts
 """
 
-DATA_BASE = 0x3a400   # 0x39800 → 0x39c00（#30）→ 0x3a000（#36 でサブのコードが増えた）→ 0x3a400（#38・#48・#49）。データの終わりは 0x3e2xx、0x3ffff まで空き）
+DATA_BASE = 0x3a800   # 0x3a400 → 0x3a800（#60・#62）。0x39800 → 0x39c00（#30）→ 0x3a000（#36 でサブのコードが増えた）→ 0x3a400（#38・#48・#49）。データの終わりは 0x3e2xx、0x3ffff まで空き）
 WTYPE_BYTES = bytes([1,3,1, 3,1,4, 4,2,2, 2,4,3])   # TYPE A..D -> (missile, double, laser)
 
 def apply(rom):
@@ -685,6 +730,7 @@ def apply(rom):
     data = data + (b'\0' if len(data) & 1 else b'') + WTYPE_BYTES
     consts = ''.join('%s = $%x\n' % (k, v) for k, v in dl.items()) + 'WTYPE = $%x\n' % wt
     src = CONSTS + consts + SRC.replace(CONSTS, '', 1) + mod_menu.source(dl) + mod_edit.src()
+    src = src.replace('CSEDATA', 'dc.b    ' + ','.join('$%02x' % c for t, c in mod_menu.CUBE_SE))
     src = src.replace('V_INIT', 'V_INIT') 
     if mod_menu.RESPAWN: src = src.replace('RSPCALL\n', '        jsr     RspSub.l        ; #35 その場復活\n')
     else: src = re.sub(r';RSPBEGIN\n.*?;RSPEND\n', '', src.replace('RSPCALL\n', ''), flags=re.S)

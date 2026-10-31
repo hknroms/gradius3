@@ -28,6 +28,7 @@ RESPAWN = os.environ.get('RESPAWN') == '1'   # #35 その場復活（0.5.2 に�
 ND_FRAMES = 36000        # NO DEATH（#36）の1クレジットの時間（フレーム。10分）
 ND_LEFT = 0x103e10       # NO DEATH の残りフレーム.l（共有RAM。以前ボスラッシュの表を置いていた所）
 ND_FLAG = 0x103e1a       # NO DEATH の印（共有RAM。MODE 1=NO DEATH と MODE 3=CUBE NO DEATH で立つ。#39）
+SE_REQ = 0x103e24        # 効果音の依頼（サブが音の番号を置き、メインの StubIn が鳴らして 0 に戻す。#60・#62）
 ND_BONUS = 0x103e20      # CUBE RUSH の残機ボーナス（+5 か +2。サブがメニュー確定時に置く。#40・#70）
 ND_TIME = 0x103e1c       # NO DEATH の時間（.l フレーム。ディップスイッチ #40 で 36000 か 18000）
 MB = 0x103f00           # メールボックス（共有RAM。サブ側は 0x203f00）
@@ -41,6 +42,16 @@ LCNT = 0x103abc          # 写している間のフレーム数（R3 の最後�
 REGIONS = [('C', 0x3fd6a, 0x3ffc0, 'rom'),   # 2026-10-30 拡張: $3fd6a〜$3fd99 の 48B はデモ入力の後ろのゼロ・参照なし（TECH.md「ROM の空き」の候補を使用）
            ('R1', 0x103860, 0x1038d4, 'shr'), ('R2', 0x103966, 0x1039c0, 'shr'), ('R3', 0x1039c6, LCNT, 'shr'),
            ('M1', 0x40500, 0x405e0, 'mrm'), ('M2', 0x42e78, 0x43000, 'mrm'), ('M3', 0x43f70, 0x44000, 'mrm')]
+# #41 テストモードの小機能のうち消すもの（2026-10-31 管理者：CHARACTER ROM CHECK・COLOR TEST・COIN COUNTER TEST）。
+# 小機能の表 $808（7つ）の消す番号を「次の小機能へ進むだけ」の短い処理（TM_SKIP、0 番の場所の先頭 10B）に向け、残りを改造のコードの置き場所にする。
+# 戻すときはこの一覧から外す（後で SCREEN CHECK(1) なども、ここに足すだけで消せる。場所は TM_BLOCKS に足す）。調べ方：src/lua/research/testmode/
+TM_BLOCKS = {0: (0x824, 0x9ae), 2: (0x9ec, 0xafa), 4: (0xb82, 0xcb4)}   # 小機能の番号: そのコードの範囲（次の小機能の入口まで。表の外から呼ばれない）
+TM_REMOVE = [0, 2, 4]
+TM_SKIP = 0x824          # 消した小機能の代わり: addq.b #1,$40001.l / rts（10B）。0 番を消す前提（0 番の場所の先頭に置く）
+assert 0 in TM_REMOVE
+for _n in TM_REMOVE:
+    _lo, _hi = TM_BLOCKS[_n]
+    REGIONS.append(('X%d' % _n, _lo + (10 if _lo == TM_SKIP else 0), _hi, 'rom'))
 STAGE = 0x1039c6        # メインRAMへ写す中身の受け渡し場所（R3 を借りる。先頭 6バイト = 写す先.l・ロング数-1.w）
 STAGEMAX = 240          # 1回に渡す大きさ（R3 248B − 見出し6B 以下の4の倍数）
 STREAM = [('S%02d' % n, 0xd4be + 32 * n, 0xd4cc + 32 * n) for n in range(46)] + [('T', 0xda7e, 0xdb0a)]
@@ -78,6 +89,7 @@ ND_LEFT  = ${ND_LEFT:x}
 ND_FLAG  = ${ND_FLAG:x}
 ND_TIME  = ${ND_TIME:x}
 ND_BONUS = ${ND_BONUS:x}
+SE_REQ   = ${SE_REQ:x}
 ND_FRAMES = {ND_FRAMES}
 RAMMAGIC = ${RAMMAGIC:x}
 MAGICVAL = ${MAGICVAL:x}
@@ -101,7 +113,7 @@ StubIn: jsr     $33b8.w
         move.b  $c8003.l,d0
         not.b   d0
         move.b  d0,MB_P1.l
-        LOCKCALL
+        jsr     Lock.l          ; #62 解除のコマンド（d0 = P1 正論理）
         move.b  $c8001.l,d0
         not.b   d0
         move.b  d0,MB_SYS.l
@@ -109,7 +121,11 @@ StubIn: jsr     $33b8.w
         cmpi.b  #1,MB_PAUS.l    ; ポーズ中はフレームカウンタを進めない（キューブの並びがポーズでずれないように）
         bne.s   si_np
         subq.w  #1,$40032.l
-si_np:  tst.b   $103ed0.l       ; サブからスコアの描き直しの依頼（CUBE INFO を OFF にした／キューブがくっついて点が入った）
+si_np:  move.b  SE_REQ.l,d7     ; 効果音の依頼（サブが置く。#60 キューブが反応する瞬間・#62 解除/ロックの成立）→ 音の命令の列へ（$2b0c）
+        beq.s   si_ns
+        clr.b   SE_REQ.l
+        jsr     $2b0c.w
+si_ns:  tst.b   $103ed0.l       ; サブからスコアの描き直しの依頼（CUBE INFO を OFF にした／キューブがくっついて点が入った）
         beq.s   ms_nr
         clr.b   $103ed0.l
         movem.l d0-d7/a0-a6,-(a7)
@@ -636,6 +652,54 @@ bs_x:   move.w  (sp)+,d0
 chunk('BossProg', """
 BOSSPROG: BOSSDATA
 """)
+
+# ---- #62 解除のコマンド（2026-10-31 に戻した。管理者決定：解除だけ・音つき・ロックは自動だけ 120秒）----
+# 毎フレーム StubIn から（起動直後から呼ぶので ROM に置く）。d0 = P1（正論理）。
+#   段階0: レバー上＋A → 1: 全部離す → 2: レバー下＋A → 3: 全部離す → 解除（各段階3秒以内。押す順番・同時押しは問わない）
+#   解除したら音（SE_REQ にサブと同じ形で置き、StubIn が鳴らす）。遊んでいる間・スタートメニューの間（$40005 ≥ 2）は受け付けない。
+#   解除のまま遊ばずに 120秒たったら自動でロック。変数は共有RAM $103E26（段階）・$103E27（残りフレーム）・$103E28.w（放置フレーム数）
+SE_UNLOCK = 0x45
+UNLOCK_IDLE = 7200      # 120秒
+chunk('Lock', f"""
+Lock:   lea     $103e26.l,a0
+        cmpi.b  #2,$40005.l
+        bcc.s   lk_act
+        andi.b  #$1f,d0
+        move.b  (a0),d1
+        beq.s   lk_0
+        subq.b  #1,1(a0)
+        beq.s   lk_clr
+        btst    #0,d1           ; 段階1・3 = 全部離すのを待つ
+        beq.s   lk_2
+        tst.b   d0
+        bne.s   lk_idle
+        cmpi.b  #3,d1
+        bne.s   lk_nx
+        move.b  #1,MB_UNLK.l    ; 解除
+        move.b  #${SE_UNLOCK:x},SE_REQ.l
+        clr.w   2(a0)
+        bra.s   lk_clr
+lk_2:   cmpi.b  #$18,d0         ; 段階2: レバー下＋A
+        bne.s   lk_idle
+        bra.s   lk_nx
+lk_0:   cmpi.b  #$14,d0         ; 段階0: レバー上＋A
+        bne.s   lk_idle
+lk_nx:  addq.b  #1,(a0)
+        move.b  #180,1(a0)
+        bra.s   lk_idle
+lk_clr: clr.b   (a0)
+lk_idle:
+        tst.b   MB_UNLK.l       ; 自動ロック（遊んでいない間）
+        beq.s   lk_r
+        addq.w  #1,2(a0)
+        cmpi.w  #{UNLOCK_IDLE},2(a0)
+        bcs.s   lk_r
+        clr.b   MB_UNLK.l
+lk_r:   rts
+lk_act: clr.b   (a0)
+        clr.w   2(a0)
+        rts
+""", 'rom')
 # ---- キューブの出現の瞬間（0x26238 の move.b $40032.l,d5 の置き換え）----
 # キューブの出現の高さは「その瞬間の $40032 xor $40033」で16通りから決まる。
 # 改造プレイ中で CUBE HEIGHT/SHIFT/TYPE のどれかが R 以外のとき、1個目が出る瞬間だけ
@@ -1115,7 +1179,7 @@ def boss_area_blob(base=0x103f40):
 BR_CHUNKS = ('BossSet', 'BossProg', 'NextStg', 'NextPos')   # BOSS RUSH モードだけで使う
 if not BOSSRUSH: CHUNKS[:] = [c for c in CHUNKS if c[0] not in BR_CHUNKS]
 
-LOCK_SUSPEND = True        # 解除・ロックのコマンドを一時停止（True の間は常に解除状態）。戻すときは False
+# 解除・ロックのコマンド：#62（2026-10-31）で解除だけをメインの Lock（chunk）に戻した。SRC_LOCK は前の版（解除・ロックの両方。参考に残す）
 RAMBLOB = None             # 共有RAMに置くコード [(メインの番地, bytes)]。apply() が作り、mod_sub がサブROMに入れて起動時に写す
 
 def apply(rom):
@@ -1139,9 +1203,7 @@ def apply(rom):
         s = s.replace('GREYDATA', 'dc.w    ' + ','.join('$%x' % x for x in gw)).replace('BOSSDATA', 'dc.w    ' + ','.join('$%x' % x for x in bp))
         s = s.replace('CUBESEEDBODY', ('        move.w  #$%x,$40032.l' % ((int(os.environ['CUBESLOT']) << 2) << 8)) if os.environ.get('CUBESLOT') else '        move.w  $103e30.l,$40032.l')
         s = s.replace('RSPINV\n', '        tst.b   $103817.l       ; #35 その場復活の後の無敵（サブが減らす）\n        bne.s   ic_r\n' if RESPAWN else '')
-        s = s.replace('LOCKCALL', 'move.b  #1,MB_UNLK.l     ; 解除/ロックのコマンドは一時停止中: 常に解除' if LOCK_SUSPEND else 'jsr     Lock.l')
         chunks.append((n, s, w))
-    if not LOCK_SUSPEND: chunks.append(('Lock', SRC_LOCK, {'rom', 'shr', 'mrm'}))
     lr = '\n'.join(l for l in (mod_edit.SRC_LR % (0, mod_edit.EB + mod_edit.O_MAX)).splitlines() if not l.strip().startswith('org'))
     chunks.append(('EdLR', lr, {'rom', 'shr', 'mrm'}))
     byname = {c[0]: c for c in chunks}
@@ -1152,7 +1214,7 @@ def apply(rom):
     shr, mrm = {}, {}
     for rn, org, b in out:
         k = kinds.get(rn, 'rom')
-        if k == 'rom': rom.put('main', org, b, 'mod:' + rn)
+        if k == 'rom': rom.put('main', org, b, 'mod:' + rn, free_ok=rn.startswith('X') or rn == 'C')   # C は 0 と FF の境目をまたぐことがある。X* = 消したテストモードの小機能（#41。中身は残っているが使われない）
         else: (shr if k == 'shr' else mrm).setdefault(rn, []).append((org, b))
     def joined(d):
         res = []
@@ -1200,6 +1262,9 @@ def apply(rom):
         rom.put('main', 0x3c7a, J('NextStg'), 'bossrush-next', expect=bytes.fromhex('427900101052'))
     # RAM のコードは、メインが呼ぶ前に必ず写してあること（StubIn・LoadW は ROM）
     for k in ('StubIn', 'LoadW'): assert all(kinds.get(r, 'rom') == 'rom' for r in place[k]), k
+    rom.put('main', TM_SKIP, bytes.fromhex('523900040001' '4e75'), 'tm-skip', expect=bytes.fromhex('4247' '4df90000083a'))   # #41
+    for _n in TM_REMOVE:
+        rom.put('main', 0x808 + 4 * _n, TM_SKIP.to_bytes(4, 'big'), 'tm-tbl%d' % _n, expect=TM_BLOCKS[_n][0].to_bytes(4, 'big'))
     rom.free_main = [FILLER]                              # ROM 合計の微調整（起動画面の文字列の後ろと、ROM の最後の16バイト）
     rom.main_layout = (place, size, left)
     tot = sum(size.values())

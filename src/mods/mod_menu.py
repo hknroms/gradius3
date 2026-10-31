@@ -160,6 +160,9 @@ def line_pal():
 
 # ---- CUBE FLASH（#48）: 反応する少し前から反応するまで、そのキューブを白っぽく光らせる。
 # 色は CUBE COLOR の9つ目（灰色＝反応しない）の枠を白に替えて使う（CUBE FLASH が ON の間、反応しないキューブは元の色のまま）
+CS_FLAG = 0x203e23     # CUBE SE（#60。0=OFF / 1〜=CUBE_SE の何番目の音。共有RAM $103E23。メニューから始めるたびに OFF）
+# キューブが反応する瞬間の音（#60）: (表示, 音の番号)。表示は6文字まで。サブの CSE_TBL もここから作る
+CUBE_SE = [('SE 0E ', 0x0e), ('SE 29 ', 0x29), ('SE 01 ', 0x01), ('SE 1E ', 0x1e)]
 CF_FLAG = 0x203ed7     # ON/OFF（共有RAM $103ED7。#57：$103813 は始め直しでゲームが消すので移した。メニューから始めるたびに OFF）
 CF_N    = 12           # 反応の何フレーム前から光らせるか
 def _white_pal():
@@ -299,6 +302,8 @@ def build_data(base):
     put('PS_CF1', b' CUBE FLASH\0')
     put('PS_HB0', b'>HIT DISP\0')   # #38 当たり判定の表示
     put('PS_HB1', b' HIT DISP\0')
+    put('PS_CS0', b'>CUBE SE\0')     # #60 キューブが反応する瞬間の音
+    put('PS_CS1', b' CUBE SE\0')
     put('PS_TM0', b'>TIME\0')       # #55 NO DEATH の残り時間（読むだけ）
     put('PS_TM1', b' TIME\0')
     # NO DEATH のときだけ出す: 装備（#36 の続き。再開のときにメインがやり直す）と MISS（自分で死ぬ）
@@ -315,6 +320,8 @@ def build_data(base):
     put('CF_0', b'OFF   \0'); put('CF_1', b'SHORT \0'); put('CF_2', b'NORMAL\0'); put('CF_3', b'LONG  \0')   # #49 CUBE FLASH
     put('LV_0', b'OFF  \0'); put('LV_1', b'ROUGH\0'); put('LV_2', b'FINE \0'); put('LV_3', b'EDGE \0'); put('LH_2', b'LINE \0')
     al(); lab['LVTAB'] = base + len(blob); blob.extend(struct.pack('>IIIII', 4, lab['LV_0'], lab['LV_1'], lab['LV_2'], lab['LV_3']))
+    for i, (t, c) in enumerate(CUBE_SE): put('CS_%d' % i, t.encode() + b'\0')
+    al(); lab['CSTAB'] = base + len(blob); blob.extend(struct.pack('>I', len(CUBE_SE) + 1) + struct.pack('>I', lab['CF_0']) + b''.join(struct.pack('>I', lab['CS_%d' % i]) for i in range(len(CUBE_SE))))
     al(); lab['CFTAB'] = base + len(blob); blob.extend(struct.pack('>IIIII', 4, lab['CF_0'], lab['CF_1'], lab['CF_2'], lab['CF_3']))
     al(); lab['LHTAB'] = base + len(blob); blob.extend(struct.pack('>IIIII', 4, lab['LV_0'], lab['LV_1'], lab['LH_2'], lab['LV_3']))
     al(); lab['EQSPD'] = base + len(blob); blob.extend(struct.pack('>I', 6) + b''.join(struct.pack('>I', lab['EN_%d' % i]) for i in range(6)))
@@ -327,7 +334,8 @@ def build_data(base):
                          ('PS_EO0', 'PS_EO1', 0x203e18, 'EQOPT'), ('PS_EH0', 'PS_EH1', 0x203e19, 0), ('PS_X0', 'PS_X1', 0, 0), ('PS_Q0', 'PS_Q1', 0x203f0c, 0), ('PS_K0', 'PS_K1', 0x203f34, 0), ('PS_V0', 'PS_V1', 0x203f1c, 'LVTAB'), ('PS_H0', 'PS_H1', 0x203f3b, 'LHTAB'), ('PS_U0', 'PS_U1', 0x203f33, 0),
                          ('PS_HB0', 'PS_HB1', HB_FLAG, 0),
                          ('PS_CF0', 'PS_CF1', CF_FLAG, 'CFTAB'),
-                         ('PS_TM0', 'PS_TM1', 0, 0)]:   # 19 = TIME（#55。NO DEATH のときだけ。値は PDraw が $203E10 から作る）   # 18 = CUBE FLASH（#48。キューブラッシュだけ）   # 17 = HIT DISP（#38。いつも出す）
+                         ('PS_TM0', 'PS_TM1', 0, 0),
+                         ('PS_CS0', 'PS_CS1', CS_FLAG, 'CSTAB')]:   # 20 = CUBE SE（#60。キューブラッシュだけ。CUBE FLASH の下）   # 19 = TIME（#55。NO DEATH のときだけ。値は PDraw が $203E10 から作る）   # 18 = CUBE FLASH（#48。キューブラッシュだけ）   # 17 = HIT DISP（#38。いつも出す）
         blob.extend(struct.pack('>IIII', lab[a], lab[b], f, lab[vt] if vt else 0))
     # STAGE DISP のエリア: 面1〜10 × 12。本来のエリア（英字）だけ（❶〜❹ は使わない＝手前の英字のまま。2026-10-28 管理者）
     #   STLAB = 英字（残りは 0）、STPRG = その開始進行度（メニューの表 PROGTBL と同じ値）
@@ -725,6 +733,7 @@ mi_ah:  move.b  (a0),(a1)+
         clr.b   $203f0c.l
         clr.b   $203f34.l       ; CUBE COLOR
         clr.b   $203ed7.l       ; CUBE FLASH（#48・#57）
+        clr.b   $203e23.l       ; CUBE SE（#60）
         clr.b   $203f33.l       ; CUBE HUNTER（始めは OFF = 出さない）
         jsr     ClrAll.l
         jsr     MbgInit.l
@@ -2189,6 +2198,7 @@ PI_MISS = 11
 PI_CUBE = 12
 PI_HIT  = 17
 PI_CF   = 18
+PI_CS   = 20               ; #60 CUBE SE
 PI_TIME = 19               ; #55 NO DEATH の残り時間（読むだけ。値は PDraw が作る）
 ; ---- 出す項目の表を作る: いつもの6つ ＋ NO DEATH なら装備と MISS ＋ キューブラッシュならキューブの5つ。d6 = 数 ----
 PMap:   lea     V_PMAP.l,a0
@@ -2222,6 +2232,7 @@ pm_k:   cmpi.b  #PI_CUBE+3,d0   ; CUBE LINE H は出さない（#49。CUBE LINE 
         cmpi.b  #PI_CUBE+1,d0   ; CUBE FLASH（#48）は CUBE COLOR の下・CUBE LINE の上（#57）
         bne.s   pm_k2
         move.b  #PI_CF,(a0)+
+        move.b  #PI_CS,(a0)+    ; CUBE SE（#60）は CUBE FLASH の下
 pm_k2:  addq.b  #1,d0
         cmpi.b  #PI_CUBE+5,d0
         bcs.s   pm_k
