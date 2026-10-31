@@ -97,6 +97,37 @@ DOT_HY = [208, 192, 176, 160, 144, 144, 128, 128, 112, 112, 96, 96, 80, 64, 48, 
 def _rgb15(h):
     r, g, b = (int(h[i:i + 2], 16) for i in (1, 3, 5))
     return ((r * 31 + 127) // 255 << 10) | ((g * 31 + 127) // 255 << 5) | ((b * 31 + 127) // 255)
+# ---- #75 メニューの飾り: 5面ボス（上下3体ずつのモアイ）が吐く石がふくらんで破裂する動き・回るキューブ（スプライト。重なりの番号 $7F・$7E。K051960 は番号が大きいほど手前）----
+_ZY = [0x00, 0x01, 0x03, 0x05, 0x07, 0x09, 0x0a, 0x0c, 0x0e, 0x0f, 0x11, 0x12, 0x14, 0x15, 0x16, 0x18, 0x19, 0x1a, 0x1c, 0x1d, 0x1e, 0x1f, 0x20, 0x21,
+       0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2e, 0x2f, 0x30, 0x31, 0x31, 0x32, 0x33, 0x34, 0x34, 0x35, 0x36,
+       0x36, 0x37, 0x38, 0x38, 0x39, 0x39, 0x3a, 0x3b, 0x3b, 0x3c, 0x3c, 0x3d, 0x3d, 0x3e, 0x3e, 0x3f]
+def _spr_ent(pri, code, size, col, cx, cy, z=0):
+    """中心 (cx, cy)（画面のドット）に置くスプライトの表の8バイト。縮小 z は x・y とも同じ値（K051960 と同じ計算で左上を出す）"""
+    w, h = [1, 2, 1, 2, 4, 2, 4, 8][size], [1, 1, 2, 2, 2, 4, 4, 8][size]
+    zx = 0x10000 // 128 * (128 - z)
+    zy = 128 - _ZY[z]
+    for i in range(3):
+        if h <= (1 << i): zy = (zy + 1) // 2
+    zy = 0x10000 // 128 * (zy * (8 // h))
+    pw, ph = (zx * w) >> 12, (zy * h) >> 12
+    x, y = cx - pw // 2, cy - ph // 2
+    rx, ry = (x + 96) & 0x1ff, (240 - y) & 0x1ff
+    return bytes([0x80 | pri, (size << 5) | ((code >> 8) & 0x1f), code & 0xff, col, (z << 2) | (ry >> 8), ry & 0xff, (z << 2) | (rx >> 8), rx & 0xff])
+ROCK_C = (288, 80)        # 石の中心（ステージの行の右・ビッグコアMk-IIIの上）
+CUBE_C = (255, 151)       # 回るキューブの中心（キューブの並びの見本の枠の真ん中）
+def rock_anim():
+    """[フレーム数.b, 8バイト]... + 終わり 0。ゲームの5面ボス戦で記録した絵の番号・縮小・時間（色は石 = パレット2・爆発 = 6）"""
+    cx, cy = ROCK_C
+    R = lambda code, size, z: _spr_ent(0x7f, code, size, 0x25, cx, cy, z)        # 0x25 = 石（番号の bit13 あり・パレット2）
+    X = lambda code: _spr_ent(0x7f, code, 6, 0x2c, cx, cy, 0)                  # 0x2c = 爆発（パレット6）
+    steps = [(30, R(0x11c0, 3, 60))]
+    for _ in range(3): steps += [(2, R(0x11c8, 3, 60)), (2, R(0x11cc, 3, 60)), (2, R(0x11c4, 3, 60)), (14, R(0x11c0, 3, 60))]   # 撃たれて光る
+    steps += [(9, R(0x11ec, 3, 60)), (9, R(0x11ec, 3, 28)), (8, R(0x1200, 6, 60)), (7, R(0x1200, 6, 28)), (4, R(0x1200, 6, 0))]   # ふくらむ
+    steps += [(4, X(0x610)), (4, X(0x620)), (4, X(0x630)), (4, X(0x6b0))]   # 破裂
+    steps += [(50, bytes(8))]                                                # 間
+    return b''.join(bytes([n]) + e for n, e in steps) + b'\0'
+def cube_anim():
+    return b''.join(_spr_ent(0x7e, c, 3, 0x1a, CUBE_C[0], CUBE_C[1], 0) for c in (0xb40, 0xb44, 0xb48, 0xb4c))   # 0x1a = キューブ（パレット13）
 def dot_palette():
     cols = ['#1e8cff', '#00c8e6', '#00d98c', '#2ecc40', '#9be22d', '#ffd400', '#ff8a00', '#ff1a1a', '#8a8f98', '#9fd4ff', '#5a5aaa', '#232346', '#000000']
     return struct.pack('>16H', 0, *[_rgb15(c) for c in cols], 0, 0)
@@ -274,6 +305,8 @@ def build_data(base):
     put('HELP1', b'UP DOWN SELECT  LEFT RIGHT CHANGE\0')
     put('HELP2', b'PUSH START\0')
     put('DOTPAL', dot_palette())      # #75
+    put('RKANIM', rock_anim())       # #75 5面ボスの石
+    put('CBANIM', cube_anim())       # #75 回るキューブ（4枚×8バイト）
     put('SHTILT', bytes([0xba, 0xbc, 0xba, 0xb8]))   # #75 シールドの見本の自機の傾き（水平・上・水平・下。ゲームで上下に動かしたときの絵の番号）
     put('SHFLM', struct.pack('>4H', 0x3a7c, 0x2594, 0x679f, 0x3e9e))   # 炎の色 1・2番の2組（ゲーム中の自機の色を記録した値）
     put('SHRED', struct.pack('>32H', *([(31 - 2 * i) << 10 for i in range(16)] + [(2 * i) << 10 for i in range(16)])))   # 8番の赤い光（31→1、0→30。4フレームごと）
@@ -1098,6 +1131,43 @@ sh_f0:  move.l  (a0),$202022.l
         lea     SHRED.l,a0
         move.w  0(a0,d0.w),$202030.l
         move.b  #1,$203e34.l    ; メインの PalCopy が写す（毎フレーム）
+; #75 5面ボスの石（表の0番に置く）: RKANIM を V_RKF（フレーム）で引く
+        move.w  V_RKF.l,d0
+        addq.w  #1,d0
+        move.w  d0,V_RKF.l
+        lea     RKANIM.l,a0
+        moveq   #0,d1
+sh_rk:  move.b  (a0)+,d1
+        bne.s   sh_r2
+        moveq   #1,d0           ; 表の終わり → 最初から
+        move.w  d0,V_RKF.l
+        lea     RKANIM.l,a0
+        move.b  (a0)+,d1
+sh_r2:  sub.w   d1,d0
+        bls.s   sh_r3
+        addq.l  #8,a0
+        bra.s   sh_rk
+sh_r3:  lea     $2c0801.l,a1
+        moveq   #7,d1
+sh_r4:  move.b  (a0)+,(a1)
+        addq.l  #2,a1
+        dbf     d1,sh_r4
+; #75 回るキューブ（表の3番）: キューブの並びの見本を出していない間だけ。8フレームごとに4枚
+        lea     $2c0831.l,a1
+        tst.b   V_DOTV.l
+        bne.s   sh_q0
+        move.w  FRAMECNT.l,d0
+        lsr.w   #3,d0
+        andi.w  #3,d0
+        lsl.w   #3,d0
+        lea     CBANIM.l,a0
+        adda.w  d0,a0
+        moveq   #7,d1
+sh_q1:  move.b  (a0)+,(a1)
+        addq.l  #2,a1
+        dbf     d1,sh_q1
+        bra.w   sh_x
+sh_q0:  move.b  #0,(a1)
         bra.w   sh_x
 sh_n:   jsr     $8850.l
 sh_x:   move.b  #0,$203936.l
@@ -1333,6 +1403,7 @@ mf_cancel:
 ; 字の番号 0xC00+n → 属性 $78（パレット3・番号の上位 $C）、番号の下位 = n
 V_DOTK  = $1036c0               ; 描いてある H・S・T（.l の下位3バイト）
 V_DOTV  = $1036c4               ; 出しているか
+V_RKF   = $1036c6               ; #75 5面ボスの石の動きのフレーム（.w）
 DOTBASE = $298000               ; 字 0xC00 の絵（サブの $280000 + 0xC00*32）
 DOTCELL2 = 2248                 ; 左上の升目（段17・桁36）の文字の面の中の位置×2 = (17*64+36)*2
 DotPanel:
