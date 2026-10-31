@@ -2,6 +2,16 @@
  "_how": "配布ページのトップに出る「報告への回答」。Google フォームから報告してくれた方には、こちらから返事を返す手段がないので、ここに書いて気づいてもらう。要らなくなったら手で消す。新しいものを上に書く。",
  "replies": [
   {
+   "issue": 93,
+   "date": "2026-10-31",
+   "title": "連射を有効にしていると、ショット＋ミサイル＋START でオプション2個にならない",
+   "body": "ご報告ありがとうございます。原因が分かり、直しました（次の版に入ります）。START を押した瞬間のボタンだけを見ていたので、連射でショットやミサイルが一瞬離れていると、別の装備になっていました。これからは START を押している間に一度でも押されたボタンを使います。キューブラッシュを最初から装備した状態で始める案は、検討します。",
+   "en": {
+    "title": "With autofire on, SHOT + MISSILE + START does not give two options",
+    "body": "Thank you for the report. We found the cause and fixed it (in the next version). Only the buttons at the moment START was pressed were checked, so with autofire, a briefly released SHOT or MISSILE gave a different loadout. Now any button pressed while START is held counts. We will consider your idea of starting CUBE RUSH already powered up."
+   }
+  },
+  {
    "issue": 84,
    "date": "2026-10-31",
    "title": "ポーズメニューの GAME OVER でキャラクターが残る・ネーム入れの表示がおかしい",

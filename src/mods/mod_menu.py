@@ -1633,13 +1633,26 @@ PAUSE = """
 ;       スピードはどれもメニューの SPEED（MB+$0d）にそろえる（#5）
 ; ボタン: P1 の bit4=ボタン1（パワーアップ）bit5=ボタン2（ショット）bit6=ボタン3（ミサイル）（#3: 以前は1つずれて読んでいた）
 ; 結果: MB+$24(1P) / +$2c(2P) に [SPEED,MISSILE,DOUBLE,LASER,OPTION,SHIELD の使用回数, スピードを下げる印（0=下げない / 目標+1）]
+V_CCB   = $1036c8          ; #93 1P START を押している間に押されたショット・ミサイル（連射で一瞬離れていても効くように）
+V_CCS   = $1036c9          ; 前のフレームの 1P START
 CmdCalc:
+        move.b  MBS_SYS.l,d1    ; #93 START を押している間（と離した次のフレームまで）は、ショット・ミサイルを覚えておく
+        andi.b  #8,d1
+        move.b  V_CCS.l,d0
+        move.b  d1,V_CCS.l
+        or.b    d1,d0
+        bne.s   cc_hd
+        clr.b   V_CCB.l
+cc_hd:  move.b  MBS_P1.l,d0
+        andi.b  #$60,d0
+        or.b    d0,V_CCB.l
         lea     $201000.l,a0
         lea     $203f24.l,a1
         bsr.s   cc_one
         lea     $201080.l,a0
         lea     $203f2c.l,a1
 cc_one: move.b  MBS_P1.l,d2
+        or.b    V_CCB.l,d2
         move.b  $69(a0),d0
         andi.b  #$1f,d0
         move.b  $203f0d.l,d1    ; 目標のスピード = メニューの SPEED
