@@ -319,12 +319,17 @@ PauseChk:                       ; 戻り d0: 0=通常 1=止める 2=装備コマ
         cmpi.b  #2,d0
         bcs.s   pc_frz
         beq.s   pc_res
-        clr.b   MB_PAUS.l
-        clr.b   $101050.l
-        clr.b   $1010d0.l
-        move.b  #8,$40029.l
-        clr.b   $4002b.l
-        moveq   #1,d0
+        clr.b   MB_PAUS.l       ; 3: GAME OVER（ポーズの GAME OVER・NO DEATH の時間切れ）。いきなり状態8にすると、物体が残り・GAME OVER の表示や
+        clr.b   $101050.l       ;   ネーム入れの準備が飛ばされていた（#84）。→ 残機を最後の1機にして、無敵でもやられるようにして続ける。
+        clr.b   $1010d0.l       ;   やられた後は純正どおりのゲームオーバー（爆発・GAME OVER・ネーム入れ）になる
+        lea     $101000.l,a0
+        tst.b   $4007f.l        ; いま遊んでいる側（0=1P 1=2P）
+        beq.s   pc_g1
+        lea     $101080.l,a0
+pc_g1:  move.b  #1,$50(a0)
+        move.b  #1,$103ed2.l    ; InvChk: 無敵でもやられる（ポーズの MISS と同じ）
+        ori.b   #$80,$1a(a0)    ; 自機の当たりの印
+        moveq   #0,d0
         rts
 pc_res: clr.b   MB_PAUS.l
         jsr     EqApply.l       ; ポーズで装備を変えていたら、やり直す
@@ -821,7 +826,7 @@ cc_i:   tst.b   MB_INV.l        ; d1 = 残り回数（$ff=無制限。無敵中�
         bra.s   cc_s
 cc_n:   move.b  $103f22.l,d1
         beq.s   cc_r
-cc_s:   move.w  #7200,$42e70.l  ; オプションハンター: 装備コマンドで付けた後の1回目は出さない（純正の初期値 3600 の2回分。出ないので種類も進まない）
+cc_s:   move.w  #$ffff,$42e70.l  ; オプションハンター: 装備コマンドで付けた後の1回目は出さない。純正は1回目が出ると時間を $FFFF にするので、同じにする（以前の 7200＝初期値 3600 の2回分だと、2回目が早すぎた #83）。出ないので種類（$42E73）は進まない
 cc_r:   rts
 """)
 
