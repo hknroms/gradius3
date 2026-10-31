@@ -274,6 +274,9 @@ def build_data(base):
     put('HELP1', b'UP DOWN SELECT  LEFT RIGHT CHANGE\0')
     put('HELP2', b'PUSH START\0')
     put('DOTPAL', dot_palette())      # #75
+    put('SHTILT', bytes([0xba, 0xbc, 0xba, 0xb8]))   # #75 シールドの見本の自機の傾き（水平・上・水平・下。ゲームで上下に動かしたときの絵の番号）
+    put('SHFLM', struct.pack('>4H', 0x3a7c, 0x2594, 0x679f, 0x3e9e))   # 炎の色 1・2番の2組（ゲーム中の自機の色を記録した値）
+    put('SHRED', struct.pack('>32H', *([(31 - 2 * i) << 10 for i in range(16)] + [(2 * i) << 10 for i in range(16)])))   # 8番の赤い光（31→1、0→30。4フレームごと）
     put('DOTCAT', dot_cat())
     put('DOTLV', dot_level())
     put('MODECV', bytes(x for t in MODECV for x in t + (0,)))   # メニューの MODE → (動いているときの MODE, ND_FLAG, その場復活, 0)
@@ -1048,9 +1051,9 @@ lc_r:   rts
 ; メニュー表示中だけ、消す代わりに背景のスプライト表を丸ごと書く
 SprHook:
         tst.b   MBS_REQ.l
-        beq.s   sh_n
+        beq.w   sh_n
         tst.b   MBS_DONE.l
-        bne.s   sh_n
+        bne.w   sh_n
         moveq   #0,d0               ; シールド色の見本: 選んだ色が変わったら色3(0x131-0x136,0x13e)を入れ替える
         move.b  $203f16.l,d0
         cmp.b   V_SHL.l,d0
@@ -1075,7 +1078,27 @@ sh_sp:  lea     MBGSPR.l,a0
 mb_sp:  move.b  (a0)+,(a1)
         addq.l  #2,a1
         dbf     d0,mb_sp
-        bra.s   sh_x
+; #75 シールドの見本の自機: 1秒（60フレーム）ごとに 水平 → 上 → 水平 → 下 に傾ける（絵の番号の下位 $BA / $BC / $BA / $B8。表の2番目のスプライト）
+        moveq   #0,d0
+        move.w  FRAMECNT.l,d0
+        divu    #60,d0
+        andi.w  #3,d0
+        lea     SHTILT.l,a0
+        move.b  0(a0,d0.w),$2c0825.l
+; 後ろの炎はゲームと同じく色で動かす（自機の色はパレット17 = $202020〜）: 1・2番を2フレームごとに入れ替え、8番（赤い光）を4フレームごとに1段ずつ明暗
+        move.w  FRAMECNT.l,d0
+        lea     SHFLM.l,a0
+        btst    #1,d0
+        beq.s   sh_f0
+        addq.l  #4,a0
+sh_f0:  move.l  (a0),$202022.l
+        lsr.w   #2,d0
+        andi.w  #31,d0
+        add.w   d0,d0
+        lea     SHRED.l,a0
+        move.w  0(a0,d0.w),$202030.l
+        move.b  #1,$203e34.l    ; メインの PalCopy が写す（毎フレーム）
+        bra.w   sh_x
 sh_n:   jsr     $8850.l
 sh_x:   move.b  #0,$203936.l
         rts
