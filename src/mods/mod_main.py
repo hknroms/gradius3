@@ -24,7 +24,6 @@
 import os
 BOSSRUSH = os.environ.get('BOSSRUSH') == '1'          # BOSS RUSH モード（v0.5.0 から外した。後の版で戻す）。mod_menu と同じ
 EXTRA_AREAS = os.environ.get('EXTRA_AREAS') == '1'
-RESPAWN = os.environ.get('RESPAWN', '1') == '1'   # #35 その場復活（v0.5.3 から既定で入る。RESPAWN=0 で外せる）
 ND_FRAMES = 36000        # NO DEATH（#36）の1クレジットの時間（フレーム。10分）
 ND_LEFT = 0x103e10       # NO DEATH の残りフレーム.l（共有RAM。以前ボスラッシュの表を置いていた所）
 ND_FLAG = 0x103e1a       # NO DEATH の印（共有RAM。MODE 1=NO DEATH と MODE 3=CUBE NO DEATH で立つ。#39）
@@ -563,7 +562,8 @@ InvChk: tst.b   $103ed2.l       ; キューブラッシュの区間が終わっ�
         bne.s   ic_f
         tst.b   MB_RUN.l
         beq.s   ic_r
-RSPINV
+        tst.b   $103817.l       ; #35 その場復活の後の無敵（サブが減らす）
+        bne.s   ic_r
         tst.b   MB_INV.l
 ic_r:   rts
 ic_f:   cmp.b   d0,d0           ; Z=1（無敵ではない）
@@ -585,10 +585,10 @@ db_inv: addq.l  #4,sp
         jmp     $ae52.l
 """)
 # #35 その場復活: 0x7c88 の move.b #2,$400a2.l（爆発が終わった → やり直しの流れへ）を置き換え。
-# サブが毎フレーム $103816 に「その場復活してよいか」を置く（改造プレイ・RESPAWN=ON THE SPOT・NORMAL・1人・残機2以上）。
+# サブが毎フレーム $103816 に「その場復活してよいか」を置く（改造プレイ・MODE が RESPAWN か RESPAWN NO DEATH・1人・残機2以上）。
 # よいときは、やり直しに入らず、残機を1つ減らして（純正の $3B00 と同じ）自機だけ出し直す（$7732: 装備・オプションは純正の死亡と
 # 同じに戻り、左から登場）。状態5（プレイ中）のまま続くので、スクロール・地形・敵はそのまま。4面（3D）は $AE8E を通るので対象外
-if RESPAWN: chunk('Rsp', """
+chunk('Rsp', """
 Rsp:    tst.b   $103816.l
         bne.s   rp_go
         move.b  #2,$400a2.l
@@ -1202,7 +1202,6 @@ def apply(rom):
     for n, s, w in CHUNKS:
         s = s.replace('GREYDATA', 'dc.w    ' + ','.join('$%x' % x for x in gw)).replace('BOSSDATA', 'dc.w    ' + ','.join('$%x' % x for x in bp))
         s = s.replace('CUBESEEDBODY', ('        move.w  #$%x,$40032.l' % ((int(os.environ['CUBESLOT']) << 2) << 8)) if os.environ.get('CUBESLOT') else '        move.w  $103e30.l,$40032.l')
-        s = s.replace('RSPINV\n', '        tst.b   $103817.l       ; #35 その場復活の後の無敵（サブが減らす）\n        bne.s   ic_r\n' if RESPAWN else '')
         chunks.append((n, s, w))
     lr = '\n'.join(l for l in (mod_edit.SRC_LR % (0, mod_edit.EB + mod_edit.O_MAX)).splitlines() if not l.strip().startswith('org'))
     chunks.append(('EdLR', lr, {'rom', 'shr', 'mrm'}))
@@ -1247,7 +1246,7 @@ def apply(rom):
     # 無敵（改造プレイのみ・メニューの INVINCIBLE）: 自機が死亡に入る2か所の直前で、無敵なら当たりを消して通常の続きへ
     rom.put('main', 0x7bc4, J('DieA') + bytes.fromhex('4e71'), 'inv-a', expect=bytes.fromhex('13fc0001000400a2'))
     rom.put('main', 0xae22, J('DieB') + bytes.fromhex('4e71'), 'inv-b', expect=bytes.fromhex('13fc0001000400a2'))
-    if RESPAWN: rom.put('main', 0x7c88, J('Rsp') + bytes.fromhex('4e71'), 'respawn', expect=bytes.fromhex('13fc0002000400a2'))   # #35
+    rom.put('main', 0x7c88, J('Rsp') + bytes.fromhex('4e71'), 'respawn', expect=bytes.fromhex('13fc0002000400a2'))   # #35
     rom.put('main', 0x6b16, J('TypeBeg'), 'type-beg', expect=bytes.fromhex('0206000267' + '1a'))
     rom.put('main', 0x6a90, J('TypeGrey'), 'type-grey', expect=bytes.fromhex('4eb90000e824'))
     rom.put('main', 0x197e, J('HiHk'), 'hi-cube', expect=bytes.fromhex('beb900040058'))

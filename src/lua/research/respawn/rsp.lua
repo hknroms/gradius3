@@ -1,12 +1,15 @@
 -- #35 その場復活の確認: メニューから始めて（面・エリア・RESPAWN を書き込み）、何も操作せずに死ぬのを待つ。
--- env: ST=面(1..10) AR=エリア(1..) RSP=0/1 END=終了フレーム SHOTS="f,f,..." SHOTDIR=dir OUTLOG=file
+-- env: ST=面(1..10) AR=エリア(1..) MODE=メニューの MODE の番号（0 NORMAL 1 NORMAL NO DEATH 2 RESPAWN 3 RESPAWN NO DEATH 4 CUBE RUSH 5 CUBE NO DEATH）
+--      MISS="f,f"（そのフレームでポーズの MISS と同じこと＝無敵でも死ぬ印と、NO DEATH なら残機+1）END SHOTS OUTLOG
 local m = manager.machine
 local sysf = m.ioport.ports[":SYSTEM"].fields
 local p1 = m.ioport.ports[":P1"].fields
 local F = { COIN=sysf["Coin 1"], START=sysf["1 Player Start"], U=p1["P1 Up"], D=p1["P1 Down"], B1=p1["P1 Button 1"], B2=p1["P1 Button 2"] }
 local main = m.devices[":maincpu"].spaces["program"]
 local ST = tonumber(os.getenv("ST") or "1"); local AR = tonumber(os.getenv("AR") or "1")
-local RSP = tonumber(os.getenv("RSP") or "1"); local END = tonumber(os.getenv("END") or "6000")
+local MODE = tonumber(os.getenv("MODE") or "2");
+local miss = {}; for f in (os.getenv("MISS") or ""):gmatch("%d+") do miss[tonumber(f)] = true end
+ local END = tonumber(os.getenv("END") or "6000")
 local logf = io.open(os.getenv("OUTLOG") or "rsp.log", "w")
 local shots = {}; for f in (os.getenv("SHOTS") or ""):gmatch("%d+") do shots[tonumber(f)] = true end
 local SD = os.getenv("SHOTDIR") or "."
@@ -20,7 +23,8 @@ emu.register_frame_done(function()
   for _, s in ipairs(seq) do
     if frame == s[1] then key(s[2], true) elseif frame == s[1] + s[3] then key(s[2], false) end
   end
-  if frame == 1700 then main:write_u8(0x103f08, ST); main:write_u8(0x103f0a, AR); main:write_u8(0x103f3e, RSP) end
+  if frame == 1700 then main:write_u8(0x103f08, ST); main:write_u8(0x103f0a, AR); main:write_u8(0x103f0b, MODE) end
+  if miss[frame] then main:write_u8(0x103ed2, 1); if main:read_u8(0x103f0b) == 1 then main:write_u8(0x101050, main:read_u8(0x101050) + 1) end end
   local st = string.format("mode=%d pst=%d dead=%d lives=%x ok=%d inv=%d stg=%d b0=%02x",
     main:read_u8(0x40029), main:read_u8(0x101001), main:read_u8(0x400a2), main:read_u8(0x101050),
     main:read_u8(0x103816), main:read_u8(0x103817) > 0 and 1 or 0, main:read_u8(0x101051), main:read_u8(0x101000))

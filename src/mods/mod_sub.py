@@ -280,21 +280,22 @@ nd_n:   lea     $80(a0),a0
         dbf     d2,nd_p
 nd_x:   rts
 
-; ---- #35 その場復活 ----（RESPAWN=1 のときだけ入る。;RSPBEGIN〜;RSPEND）
-;RSPBEGIN
+; ---- #35 その場復活 ----
 ; 毎フレーム、「その場復活してよいか」を $203816 に置く（メインの Rsp が爆発の終わりで見る）:
-;   改造プレイ・RESPAWN=ON THE SPOT（MB+$3E）・MODE=NORMAL・1人（2P の残機 $1010D0 が 0）・残機（BCD）が 2 以上。
+;   改造プレイ・その場復活の印（MB+$3E。メニューの MODE が RESPAWN / RESPAWN NO DEATH のとき mf_go が立てる）・
+;   動いているときの MODE が 0 か 1（キューブ・ボスラッシュでは使わない）・1人（2P の残機 $1010D0 が 0）・残機（BCD）が 2 以上。
 ;   最後の1機・4面（3D は別の自機の処理で Rsp を通らない）は純正どおり復活地点から。
+;   RESPAWN NO DEATH は無敵なので、死ぬのはポーズの MISS など（残機は MISS が先に1つ足すので減らない）。
 ; 復活の後の無敵 $203817（メインが 180 を置く。メインの InvChk が見る）を、自機を動かせる間（状態 3）だけ減らし、点滅させる
 ; （自機の先頭 $201000 を 0 / $80。隠したかを $203818 に覚えておき、登場中（状態 1）以外の状態になったらやめて戻す）。
 RspSub:
         moveq   #0,d0
         tst.b   MBS_RUN.l
         beq.s   rs_set
-        tst.b   $203f3e.l       ; RESPAWN（0=CHECKPOINT 1=ON THE SPOT）
+        tst.b   $203f3e.l       ; その場復活の印
         beq.s   rs_set
-        tst.b   $203f0b.l       ; MODE = NORMAL だけ
-        bne.s   rs_set
+        cmpi.b  #1,$203f0b.l    ; 動いているときの MODE 0（普通）か 1（NO DEATH）
+        bhi.s   rs_set
         tst.b   $2010d0.l       ; 2P の残機（1人プレイでは 0）
         bne.s   rs_set
         cmpi.b  #1,$201050.l    ; 残機 2 以上
@@ -323,7 +324,6 @@ rs_vis: tst.b   $203818.l       ; 自分で隠したときだけ戻す
         clr.b   $203818.l
         move.b  #$80,$201000.l
         rts
-;RSPEND
 
 ; ---- キューブが反応する瞬間の効果音（#60）: ポーズの CUBE SE（$103E23 = 0:OFF / 1〜:音の番号の表 CSE_TBL）----
 ;   メインはキューブが反応したフレームで $2A を 0→1 にする（$262A2）。サブは枠ごとに前のフレームの $2A を控えておき、
@@ -494,7 +494,7 @@ fr_ingame:
 fr_rk:  move.b  #1,V_RKL.l
         jsr     RankDisp.l
 fr_nr:  jsr     NdDown.l        ; #53 NO DEATH の10面の下へ降りる区間
-RSPCALL
+        jsr     RspSub.l        ; #35 その場復活
         jsr     HitDisp.l       ; #38 当たり判定の表示
         jsr     StChk.l
         jsr     PosChk.l
@@ -732,8 +732,6 @@ def apply(rom):
     src = CONSTS + consts + SRC.replace(CONSTS, '', 1) + mod_menu.source(dl) + mod_edit.src()
     src = src.replace('CSEDATA', 'dc.b    ' + ','.join('$%02x' % c for t, c in mod_menu.CUBE_SE))
     src = src.replace('V_INIT', 'V_INIT') 
-    if mod_menu.RESPAWN: src = src.replace('RSPCALL\n', '        jsr     RspSub.l        ; #35 その場復活\n')
-    else: src = re.sub(r';RSPBEGIN\n.*?;RSPEND\n', '', src.replace('RSPCALL\n', ''), flags=re.S)
     src = src.replace('TESTNOIRQ', 'cmpi.b  #2,TOPSTATE.l\n        bne.s   ih_go\n        jmp     $5c8.l\nih_go:' if os.environ.get('TESTNOIRQ') else '')
     b, lab = asm68.assemble('V_INIT = $103412\n' + src if 'V_INIT   =' not in src else src, SUB_FREE)
     assert SUB_FREE + len(b) <= DATA_BASE, hex(SUB_FREE + len(b))

@@ -13,7 +13,6 @@ import struct
 import os
 EXTRA_AREAS = os.environ.get('EXTRA_AREAS') == '1'
 BOSSRUSH = os.environ.get('BOSSRUSH') == '1'
-RESPAWN = os.environ.get('RESPAWN', '1') == '1'   # #35 その場復活（v0.5.3 から既定で入る。RESPAWN=0 で外せる）
 NOINV = os.environ.get('NO_INV') == '1'   # スタートメニュー・ポーズの INVINCIBLE を外す（一般公開のとき。NO_INV=1。2026-10-30 管理者：今は残す）
 # 各行の表示（英字は普通の文字、数字は白抜き ❶〜❹）
 _W = lambda n: '#%d' % n
@@ -52,10 +51,15 @@ AREAS = [len(x) for x in AREA_LABELS]   # 選べるエリア数
 STAGE_LABELS = ['STAGE   %d' % i for i in range(1, 10)] + ['STAGE  10', 'EX STAGE', '', 'BOSS RUSH']   # 数字の右端を BOSS RUSH の H にそろえる
 # 行の並び: 面1〜10, BOSS RUSH(内部の面番号13), EX STAGE(11。A=グラディウス B=サラマンダ → 開始時に 11/12)
 ROW_ORDER = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 10]
+# MODE（メニューの番号。2026-10-31 管理者決定）: 0 NORMAL / 1 NORMAL NO DEATH / 2 RESPAWN（その場復活 #35）/ 3 RESPAWN NO DEATH /
+# 4 CUBE RUSH / 5 CUBE NO DEATH / 6 BOSS RUSH（BOSSRUSH=1）。奇数 1・3・5 が NO DEATH（無敵・時間制）。
+# 始めるとき（mf_go）に MODECV で「動いているときの MODE（0 普通・1 NO DEATH・2 キューブラッシュ・4 ボスラッシュ）・ND_FLAG・
+# その場復活の印（MB+$3E）」に変換する。ゲーム中の処理は動いているときの MODE を見る（メニューの番号は控えの値だけ）
+MODE_NAMES = ['NORMAL', 'NORMAL NO DEATH', 'RESPAWN', 'RESPAWN NO DEATH', 'CUBE RUSH', 'CUBE NO DEATH', 'BOSS RUSH']
+MODECV = [(0, 0, 0), (1, 1, 0), (0, 0, 1), (1, 1, 1), (2, 0, 0), (2, 1, 0), (4, 0, 0)]
 ITEMS = [
     ('INVINCIBLE', 1, 0, 1, 0x20, ['OFF', 'ON'], 0),   # 一時的な項目（無敵）
-    ('MODE',      1, 0, 4 if BOSSRUSH else 3, 0x0b, ['NORMAL', 'NO DEATH', 'CUBE RUSH', 'CUBE NO DEATH', 'BOSS RUSH'][:5 if BOSSRUSH else 4], 0),   # 0=NORMAL 1=NO DEATH(#36) 2=CUBE RUSH 3=CUBE NO DEATH(#39。mf_go で 2 に変換して ND_FLAG=1) 4=BOSS RUSH
-] + ([('RESPAWN',   1, 0, 1, 0x3e, ['CHECKPOINT', 'ON THE SPOT'], 0)] if RESPAWN else []) + [   # #35 その場復活（MODE が NORMAL のときだけ選べる。サブ RspSub が見る）
+    ('MODE',      1, 0, 6 if BOSSRUSH else 5, 0x0b, MODE_NAMES[:7 if BOSSRUSH else 6], 0),   # 番号は MODE_NAMES の順（2026-10-31 管理者決定）。始めるときに mf_go が MODECV で変換する   # 0=NORMAL 1=NO DEATH(#36) 2=CUBE RUSH 3=CUBE NO DEATH(#39。mf_go で 2 に変換して ND_FLAG=1) 4=BOSS RUSH
     ('LOOP',      0, 1, 99, 0x09, None, 1),
 ] + [(STAGE_LABELS[i], 3, i + 1, AREAS[i], 0x08, None, 0) for i in ROW_ORDER] + [
     ('CUBE HEIGHT', 1, 0, 16, 0x35, ['RANDOM'] + [str(i) for i in range(1, 17)], 0),   # キューブラッシュの並び: 3つとも RANDOM = 純正のまま
@@ -67,7 +71,7 @@ ITEMS = [
     ('FULL POWER CAPSULE', 1, 0, 7, 0x23, ['OFF', 'SPEEDUP', 'MISSILE', 'DOUBLE', 'LASER', 'OPTION', '_', '\x8c'], 6),   # フル装備コマンドの後のカプセルゲージの位置。'_'=? / 0x8c=!（描き足した字）
 ]
 # 各項目の画面の行（可視は行2〜29）。面の表の後・CUBE の後に1行ずつ空ける
-ROWS = ([2, 3, 4, 5] if RESPAWN else [2, 3, 5]) + list(range(7, 19)) + [20, 21, 22] + [24, 25, 26, 27]   # INVINCIBLE が一番上、最下段は PUSH START
+ROWS = [2, 3, 5] + list(range(7, 19)) + [20, 21, 22] + [24, 25, 26, 27]   # INVINCIBLE が一番上、最下段は PUSH START
 assert len(ROWS) == len(ITEMS)
 PLUS_ROWS = ['........', '...f....', '...f9...', '.ffffff.', '..9f9999', '...f9...', '....9...', '........']   # ゲームの文字と同じ傾き・影
 PLUS_GFX = bytes(int(r[i] if r[i] != '.' else '0', 16) << 4 | int(r[i+1] if r[i+1] != '.' else '0', 16) for r in PLUS_ROWS for i in range(0, 8, 2))
@@ -220,7 +224,6 @@ STG0 = [it[0] for it in ITEMS].index('STAGE   1')   # 面の表の最初の行�
 STGEX = [it[0] for it in ITEMS].index('EX STAGE')
 CAPI = [it[0] for it in ITEMS].index('FULL POWER CAPSULE')
 CUBE0 = [it[0] for it in ITEMS].index('CUBE HEIGHT')   # CUBE HEIGHT/SHIFT/TYPE の最初の項目番号
-RSPI = [it[0] for it in ITEMS].index('RESPAWN') if RESPAWN else 255   # #35 RESPAWN の項目番号
 # 可視領域は タイル列12〜51 / 行2〜29 (320x224)。それに合わせて配置
 ROW0, COL_LABEL, COL_VAL, COL_CUR = 4, 14, 35, 12   # 値の列（2026-10-28 に 29→35）
 TILE_A = 0x24c000
@@ -247,6 +250,7 @@ def build_data(base):
     put('ROWMAP', bytes(ROWS))
     put('HELP1', b'UP DOWN SELECT  LEFT RIGHT CHANGE\0')
     put('HELP2', b'PUSH START\0')
+    put('MODECV', bytes(x for t in MODECV for x in t + (0,)))   # メニューの MODE → (動いているときの MODE, ND_FLAG, その場復活, 0)
     put('PS_T', b'PAUSE\0')
     put('RK_T', b'RANK>\0')
     put('PO_X', b'X>\0')
@@ -514,7 +518,7 @@ da_nc:  move.w  #%(colcur)d,d0
         bra.w   da_next
 da_val: jsr     ValCol.l
         move.w  V_Y.l,d1
-        moveq   #12,d7          ; 13桁（CUBE NO DEATH が13文字。#58）
+        moveq   #15,d7          ; 16桁（RESPAWN NO DEATH が16文字。#58 で13桁にしていた）
         jsr     ClrFld.l
         moveq   #0,d0
         move.b  7(a5),d0
@@ -557,23 +561,23 @@ vc_r:   rts
 ; メニュー表示時なので $203f0b は未変換（1=NO DEATH 2=CUBE RUSH 3=CUBE NO DEATH）。CUBE NO DEATH は NO DEATH と CUBE RUSH の両方の性質を持つ
 CubeSkip:
         moveq   #0,d3
-        tst.b   d7              ; INVINCIBLE の行: NO DEATH / CUBE NO DEATH では選べない（いつも無敵）
+        tst.b   d7              ; INVINCIBLE の行: NO DEATH の3つ（MODE 1・3・5）では選べない（いつも無敵）
         bne.s   ck_c
 NOINV_SKIP
-        cmpi.b  #1,$203f0b.l
-        beq.s   ck_sk
-        cmpi.b  #3,$203f0b.l
-        bne.s   ck_x
+        move.b  $203f0b.l,d0
+        cmpi.b  #6,d0
+        bcc.s   ck_x
+        btst    #0,d0
+        beq.s   ck_x
 ck_sk:  moveq   #1,d3
         bra.s   ck_x
 ck_c:
-RSP_SKIP
         move.b  $203f0b.l,d0    ; MODE
-        cmpi.b  #2,d0           ; CUBE RUSH または CUBE NO DEATH: キューブの3行は選べる。面の表（9面に決まる）と
+        cmpi.b  #4,d0           ; CUBE RUSH(4) または CUBE NO DEATH(5): キューブの3行は選べる。面の表（9面に決まる）と
         beq.s   ck_cr           ;   FULL POWER CAPSULE（ゲージは SPEED UP に固定）は意味がないので飛ばす（#72）
-        cmpi.b  #3,d0
+        cmpi.b  #5,d0
         beq.s   ck_cr
-        cmpi.b  #4,d0           ; BOSS RUSH（BOSSRUSH=1）: EX STAGE の行は使えない（#72）
+        cmpi.b  #6,d0           ; BOSS RUSH（BOSSRUSH=1）: EX STAGE の行は使えない（#72）
         bne.s   ck_cb
         cmpi.b  #STGEX,d7
         beq.s   ck_sk
@@ -646,12 +650,12 @@ dg_lp:  cmp.b   6(a5),d6
 ;   CUBE RUSH / CUBE NO DEATH = 全部 / BOSS RUSH = EX STAGE の行全部と、面1〜10の行の B 以降(BOSS RUSH の行はそのまま)
         move.b  5(a5),d0        ; この行の面番号(1〜10, 11=EX, 13=BOSS RUSH)
         move.b  $203f0a.l,d4    ; 選択中のエリア
-        move.b  $203f0b.l,d5    ; MODE（0=NORMAL 1=NO DEATH 2=CUBE RUSH 3=CUBE NO DEATH #39 4=BOSS RUSH）
-        cmpi.b  #2,d5
+        move.b  $203f0b.l,d5    ; MODE（メニューの番号: 4=CUBE RUSH 5=CUBE NO DEATH 6=BOSS RUSH。MODE_NAMES）
+        cmpi.b  #4,d5
         beq.s   dg_dis
-        cmpi.b  #3,d5           ; CUBE NO DEATH も CUBE RUSH と同じ扱い
+        cmpi.b  #5,d5           ; CUBE NO DEATH も CUBE RUSH と同じ扱い
         beq.s   dg_dis
-        cmpi.b  #4,d5           ; BOSS RUSH（BOSSRUSH=1）
+        cmpi.b  #6,d5           ; BOSS RUSH（BOSSRUSH=1）
         bne.s   dg_en
         cmpi.b  #11,d0
         beq.s   dg_dis
@@ -753,11 +757,6 @@ mi_ah:  move.b  (a0),(a1)+
         clr.b   $203f33.l       ; CUBE HUNTER（始めは OFF = 出さない）
         jsr     ClrAll.l
         jsr     MbgInit.l
-        lea     HELP2.l,a0
-        move.w  #27,d0
-        move.w  #29,d1
-        move.b  #%(attr)d,d2
-        jsr     PutStr.l
 NOINV_CUR
         move.b  MBS_P1.l,V_PIN.l
         move.b  MBS_SYS.l,V_SIN.l
@@ -1071,7 +1070,17 @@ mf_bg:  move.b  (a0)+,(a1)+
         jsr     MenuInit.l
         move.b  #1,V_INIT.l
 mf_run:
-        move.b  MBS_P1.l,d0
+        move.w  #42,d0          ; PUSH START: 右上の一番上（行2・桁42〜51）で点滅（約0.5秒ごと。2026-10-31 管理者）
+        move.w  #2,d1
+        btst    #5,$203951.l    ; FRAMECNT の下位
+        beq.s   mf_pc
+        lea     HELP2.l,a0
+        move.b  #%(attr)d,d2
+        jsr     PutStr.l
+        bra.s   mf_pd
+mf_pc:  moveq   #9,d7
+        jsr     ClrFld.l
+mf_pd:  move.b  MBS_P1.l,d0
         move.b  V_PIN.l,d1
         move.b  d0,V_PIN.l
         move.b  d1,d2
@@ -1159,21 +1168,20 @@ mf_sv:  move.b  (a0)+,(a1)+
         moveq   #7,d7
 mf_sv2: move.b  (a0)+,(a1)+
         dbf     d7,mf_sv2
+; ---- MODE の変換（2026-10-31）: メニューの番号 → 動いているときの MODE・ND_FLAG・その場復活の印（MB+$3E。#35）----
+        moveq   #0,d0
+        move.b  $203f0b.l,d0
+        lsl.w   #2,d0
+        lea     MODECV.l,a0
+        adda.w  d0,a0
+        move.b  (a0)+,$203f0b.l  ; 0=普通 1=NO DEATH 2=キューブラッシュ 4=ボスラッシュ
+        move.b  (a0)+,$203e1a.l  ; ND_FLAG（NO DEATH の3つ）
+        move.b  (a0),$203f3e.l   ; その場復活（RESPAWN・RESPAWN NO DEATH）。サブの RspSub が見る
         cmpi.b  #2,$203f0b.l     ; CUBE HEIGHT/SHIFT/TYPE はキューブラッシュだけ（ほかは RANDOM = 純正のまま。控えた値はそのまま）
         beq.s   mf_cr
         clr.b   $203f35.l
         clr.w   $203f36.l
 mf_cr:
-; ---- CUBE NO DEATH（#39）: MODE 3 → 2(キューブラッシュ)に変換して ND_FLAG を立てる。NO DEATH(1) でも立てる ----
-        clr.b   $203e1a.l        ; ND_FLAG: いったん落とす（0=NORMAL / 2=CUBE RUSH はここで確定）
-        cmpi.b  #3,$203f0b.l     ; MODE 3 = CUBE NO DEATH → MODE 2(キューブラッシュ) + ND_FLAG
-        bne.s   mf_fl1
-        move.b  #2,$203f0b.l
-        bra.s   mf_fl2
-mf_fl1: cmpi.b  #1,$203f0b.l     ; MODE 1 = NO DEATH も ND_FLAG を立てる
-        bne.s   mf_fl3
-mf_fl2: move.b  #1,$203e1a.l
-mf_fl3:
 NOINV_GO
         tst.b   $203e1a.l        ; ND_FLAG が立っていれば いつも無敵（控えた INVINCIBLE はそのまま）
         beq.s   mf_ndz
@@ -2575,15 +2583,7 @@ pf_go:  move.b  d0,MBS_PAUS.l
 pf_ret: rts
 """
 
-RSP_SKIP_SRC = '''        cmpi.b  #RSPI,d7        ; #35 RESPAWN の行: MODE が NORMAL 以外では選べない（RESPAWN=1 のときだけ）
-        bne.s   ck_c2
-        tst.b   $203f0b.l
-        bne.s   ck_sk
-        bra.s   ck_x
-ck_c2:
-'''
 def _noinv(t):
-    t = t.replace('RSP_SKIP\n', RSP_SKIP_SRC if RESPAWN else '')
     if NOINV:
         t = t.replace('NOINV_SKIP\n', '        bra.s   ck_sk           ; リリース: INVINCIBLE の行はいつも飛ばす\n')
         t = t.replace('NOINV_DRAW\n', '        tst.b   d7              ; リリース: INVINCIBLE の行は描かない\n        beq.w   da_next\n')
@@ -2595,4 +2595,4 @@ def _noinv(t):
         t = t.replace('NOINV_CUR\n', '        clr.b   V_CUR.l\n')
     return t
 def source(lab):
-    return _noinv(('GRIDCOL = %d\nATTRSELGRID = %d\nATTRDIS = %d\nCUBE0 = %d\nRSPI = %d\nSTG0 = %d\nSTGEX = %d\nCAPI = %d\n' % (GRID_COL, ATTR_SELGRID, ATTR_DIS, CUBE0, RSPI, STG0, STGEX, CAPI)) + (ENGINE + ENGINE2 + PAUSE.replace('%', '%%')) % {'nitem': NITEM, 'row0': ROW0, 'colcur': COL_CUR, 'collab': COL_LABEL, 'colval': COL_VAL, 'attr': ATTR_TXT, 'attrsel': ATTR_SEL})
+    return _noinv(('GRIDCOL = %d\nATTRSELGRID = %d\nATTRDIS = %d\nCUBE0 = %d\nSTG0 = %d\nSTGEX = %d\nCAPI = %d\n' % (GRID_COL, ATTR_SELGRID, ATTR_DIS, CUBE0, STG0, STGEX, CAPI)) + (ENGINE + ENGINE2 + PAUSE.replace('%', '%%')) % {'nitem': NITEM, 'row0': ROW0, 'colcur': COL_CUR, 'collab': COL_LABEL, 'colval': COL_VAL, 'attr': ATTR_TXT, 'attrsel': ATTR_SEL})
