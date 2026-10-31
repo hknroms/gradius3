@@ -5,20 +5,20 @@
    "issue": 84,
    "date": "2026-10-31",
    "title": "ポーズメニューの GAME OVER でキャラクターが残る・ネーム入れの表示がおかしい",
-   "body": "ご報告と画像をありがとうございます。ポーズの GAME OVER が、普通のゲームオーバーの片付けを一部飛ばしているためだと思われます。調べて直します。直ったら、ここと更新履歴でお知らせします。",
+   "body": "ご報告と画像をありがとうございます。原因が分かり、直しました（次の版に入ります）。ポーズの GAME OVER が、普通のゲームオーバーの手順を飛ばしていました。これからは自機がその場でやられて、純正どおり GAME OVER の表示とネーム入れになります。",
    "en": {
     "title": "GAME OVER from the pause menu leaves characters on screen / name entry looks wrong",
-    "body": "Thank you for the report and the image. GAME OVER from the pause menu probably skips part of the normal game over cleanup. We will look into it and fix it, and let you know here and in the update history."
+    "body": "Thank you for the report and the image. We found the cause and fixed it (in the next version). GAME OVER from the pause menu skipped steps of the normal game over. Now your ship is destroyed on the spot, followed by the GAME OVER screen and name entry as in the original."
    }
   },
   {
    "issue": 83,
    "date": "2026-10-31",
    "title": "メニューから始めたときの2回目のオプションハンターが早い",
-   "body": "ご報告ありがとうございます。1回目を出さないようにした仕組みが、2回目までの時間にも影響しているようです。純正の周期と比べて調べ、2回目以降は純正どおりの時間で出るように直します。",
+   "body": "ご報告ありがとうございます。原因が分かり、直しました（次の版に入ります）。1回目を出さないようにしたときの待ち時間が短すぎて、2回目が約30秒後に出ていました。純正で1回目が出た後と同じ長さ（オプション4つで約4分半）にしました。",
    "en": {
     "title": "The second Option Hunter comes too early when starting from the menu",
-    "body": "Thank you for the report. The way we skip the first Option Hunter seems to affect the time until the second one. We will compare with the original timing and fix it so the second and later ones appear on the original schedule."
+    "body": "Thank you for the report. We found the cause and fixed it (in the next version). When we skipped the first Option Hunter, the wait we set was too short, so the second one came about 30 seconds later. It now uses the same wait as the original after the first one (about 4.5 minutes with four options)."
    }
   },
   {
