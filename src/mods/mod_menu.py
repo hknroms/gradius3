@@ -1744,13 +1744,14 @@ kc_l:   tst.b   (a0)
         bra.w   kc_put
 kc_nf:  tst.b   V_CCW.l
         bne.s   kc_cc
-        tst.b   V_CFW.l         ; CUBE FLASH だけのとき: 光らせ終わったら元の色（パレット29）に戻す
-        beq.w   kc_n
-        move.b  4(a0),d4
-        andi.b  #$1e,d4
-        cmp.b   8(a3),d4
-        bne.w   kc_n
-        moveq   #$1a,d3
+        move.b  4(a0),d4        ; CUBE COLOR が OFF: 借りた9つの色のどれかを使っているキューブは元の色（パレット29）に戻す
+        andi.b  #$1e,d4         ;   （CUBE FLASH の光らせ終わりと、CUBE COLOR を ON→OFF にしたとき。以前は FLASH の白だけ戻していたので、
+        moveq   #8,d2           ;   ON の間に色を付けたキューブが、借りたパレットをゲームが使い直した色のままになっていた #76）
+kc_rs:  cmp.b   0(a3,d2.w),d4
+        beq.s   kc_org
+        dbf     d2,kc_rs
+        bra.w   kc_n
+kc_org: moveq   #$1a,d3
         bra.s   kc_put
 kc_cc:  tst.b   $2a(a0)
         bne.s   kc_set

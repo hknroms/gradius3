@@ -471,12 +471,14 @@ pb_h1:  rts                     ; （HUNTER TIME は廃止。装備コマンド�
 """)
 # ---- キューブラッシュ（改造プレイ）の点数はハイスコア・ランキングに入れない ----
 chunk('HiRank', """
-CkCR:   tst.b   MB_RUN.l        ; 戻り: eq = キューブラッシュか NO DEATH（#36）の改造プレイ
-        beq.s   ck_n
-        cmpi.b  #1,MB_MODE.l
-        beq.s   ck_r
-        cmpi.b  #2,MB_MODE.l
-ck_r:   rts
+CkCR:   tst.b   MB_RUN.l        ; 戻り: eq = ハイスコアに入れない改造プレイ（#35 2026-10-31 管理者：入るのはメニューの MODE が NORMAL のときだけ。
+        beq.s   ck_n            ;   NO DEATH の3つ・RESPAWN・キューブの2つ・ボスラッシュは入れない。START だけのプレイは今までどおり入る）
+        tst.b   MB_MODE.l       ; 動いているときの MODE（0 普通・1 NO DEATH・2 キューブ・4 ボスラッシュ）
+        bne.s   ck_e
+        cmpi.b  #1,$103f3e.l    ; その場復活（RESPAWN）: 1 なら eq
+        rts
+ck_e:   cmp.b   d0,d0           ; Z=1
+        rts
 ck_n:   cmpi.b  #1,MB_RUN.l
         rts
 ; 0x197e の cmp.l $40058.l,d7 の置き換え（点数加算後のハイスコア更新）: キューブラッシュなら更新しない（C=1）
@@ -913,6 +915,7 @@ cm_p:   lea     $101f60.l,a3    ; 取得処理(0x8b0e)と同じ: シールド等
         mulu    #$c0,d0         ; 速さ = 0x100+0xc0*段階（自機の絵の番号 $1e は書かない: 4面で化けるため #4）
         addi.w  #$100,d0
         move.w  d0,$2c(a2)
+        move.w  #$0101,$72(a2)  ; ゲージの SPEED UP の枠を戻す（5速で「取り切り」$0800 になって字が消えていた。遅くしたので取れるようにする #3）
 cm_s:   moveq   #1,d3
 cm_lp:  move.b  -1(a4,d3.w),d4
         bsr.s   Use
