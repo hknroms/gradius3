@@ -368,6 +368,16 @@ cse_x:  rts
 CSE_TBL: CSEDATA
         even
 
+; ---- #90 くっついたキューブの絵を地形の字に描くとき（純正 $7DAE の 32×32 ドットのループ）、その升目の字が 0 番だと
+;      字の0番（数字の「0」）に描いてしまい、スコアなどの 0 が化けていた（キューブラッシュの開始位置では、くっつく所に
+;      専用の字が用意されていない升目がある）。字の0番に当たるドットは描かない。
+StickPix:
+        jsr     $7dfc.l         ; 純正: そのドットのある字の絵の場所 → a6
+        cmpa.l  #$280020,a6     ; 字の0番（$280000〜$28001F）
+        bcs.s   sp_x
+        jmp     $7ed2.l         ; 純正: ドットを描く
+sp_x:   rts
+
 ; ---- 毎フレーム ----
 Frame:
         jsr     CubeSe.l        ; #60
@@ -735,6 +745,7 @@ def apply(rom):
     rom.put('sub', 0xbb6, bytes.fromhex('4ef9') + lab['ClrHook'].to_bytes(4, 'big'), 'clr-vars', expect=bytes.fromhex('41f900101c00'))
     rom.put('sub', 0x732e, bytes.fromhex('4eb9') + lab['ClrFix'].to_bytes(4, 'big') + bytes.fromhex('4e71') * 9, 'clrfix-32',
             expect=bytes.fromhex('13444001e04c1a040204000e020500e1e30cd80513440001'))   # #32 $732E〜$7345（24バイト）
+    rom.put('sub', 0x7dce, bytes.fromhex('4eb9') + lab['StickPix'].to_bytes(4, 'big'), 'stickpix-90', expect=bytes.fromhex('612c61000100'))   # bsr.s $7dfc / bsr.w $7ed2
     rom.put('sub', 0xafc4, bytes.fromhex('4eb9') + lab['CubeStick'].to_bytes(4, 'big'), 'cube-stick', expect=bytes.fromhex('117c00010026'))
     rom.put('sub', 0x877c, bytes.fromhex('4eb9') + lab['SprHook'].to_bytes(4, 'big') + bytes.fromhex('4e714e714e71'), 'menubg-spr', expect=bytes.fromhex('610000d213fc000000203936'))
     rom.put('sub', DATA_BASE, data, 'menudata')
