@@ -222,7 +222,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
     if (todo.length) {
       const form = (i, res) => 'https://github.com/hknroms/gradius3/issues/new?' + [['template', 'testplay_en.yml'], ['title', '[Check] #' + i.number + ' ' + strip(i.title)],
         ['kind', 'Re-check of a fix'], ['version', latest || state(i).fixed_in], ['origin', '#' + i.number], ['recheck', res]].map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
-      $('#rc-list').innerHTML = todo.map(i => '<div class="rc"><span class="t"><a href="' + esc(i.html_url) + '" target="_blank" rel="noopener">' + esc(strip(i.title)) + '</a></span><span class="v">' + esc(state(i).fixed_in) + ' fixed</span>' +
+      $('#rc-list').innerHTML = todo.map(i => '<div class="rc"><span class="t"><a href="' + esc(i.html_url) + '" target="_blank" rel="noopener"><span class="sub">#' + i.number + '</span> ' + esc(strip(i.title)) + '</a></span><span class="v">' + esc(state(i).fixed_in) + ' fixed</span>' +
         '<div class="b">' + (SENT[i.number] ? '<span class="sub">✅ Sent. Thank you</span>' :
           '<a class="ok" data-rc="' + i.number + '" data-res="直っていた" data-ver="' + esc(latest || state(i).fixed_in) + '" href="' + esc(form(i, 'fixed')) + '" target="_blank" rel="noopener">✅ Fixed</a>' +
           '<a class="ng" data-rc="' + i.number + '" data-res="まだおかしい" data-ver="' + esc(latest || state(i).fixed_in) + '" href="' + esc(form(i, 'still broken')) + '" target="_blank" rel="noopener">⚠️ Still broken</a>') + '</div></div>').join('');

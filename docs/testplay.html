@@ -232,7 +232,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
     if (todo.length) {
       const form = (i, res) => 'https://github.com/hknroms/gradius3/issues/new?' + [['template', 'testplay.yml'], ['title', '[確認] #' + i.number + ' ' + strip(i.title)],
         ['kind', '直ったかの確認'], ['version', latest || state(i).fixed_in], ['origin', '#' + i.number], ['recheck', res]].map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
-      $('#rc-list').innerHTML = todo.map(i => '<div class="rc"><span class="t"><a href="' + esc(i.html_url) + '" target="_blank" rel="noopener">' + esc(strip(i.title)) + '</a></span><span class="v">' + esc(state(i).fixed_in) + ' で直しました</span>' +
+      $('#rc-list').innerHTML = todo.map(i => '<div class="rc"><span class="t"><a href="' + esc(i.html_url) + '" target="_blank" rel="noopener"><span class="sub">#' + i.number + '</span> ' + esc(strip(i.title)) + '</a></span><span class="v">' + esc(state(i).fixed_in) + ' で直しました</span>' +
         '<div class="b">' + (SENT[i.number] ? '<span class="sub">✅ 「' + esc(SENT[i.number]) + '」を送りました。ありがとうございます</span>' :
           '<a class="ok" data-rc="' + i.number + '" data-res="直っていた" data-ver="' + esc(latest || state(i).fixed_in) + '" href="' + esc(form(i, '直っていた')) + '" target="_blank" rel="noopener">✅ 直っていた</a>' +
           '<a class="ng" data-rc="' + i.number + '" data-res="まだおかしい" data-ver="' + esc(latest || state(i).fixed_in) + '" href="' + esc(form(i, 'まだおかしい')) + '" target="_blank" rel="noopener">⚠️ まだおかしい</a>') + '</div></div>').join('');
