@@ -112,6 +112,7 @@ StubIn: jsr     $33b8.w
         move.b  $c8003.l,d0
         not.b   d0
         move.b  d0,MB_P1.l
+        addq.w  #1,$103e0e.l    ; #100 ゲームの処理の回数（サブの処理落ちメーターが画面の描き直しの回数と比べる）
         jsr     Lock.l          ; #62 解除のコマンド（d0 = P1 正論理）
         move.b  $c8001.l,d0
         not.b   d0

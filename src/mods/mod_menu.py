@@ -240,6 +240,7 @@ CS_FLAG = 0x203e23     # CUBE SE（#60。0=OFF / 1〜=CUBE_SE の何番目の音
 CUBE_SE = [('SE 1E ', 0x1e), ('SE 0E ', 0x0e), ('SE 15 ', 0x15), ('SE 1C ', 0x1c)]   # #94 29・01 は消し、15・1C を足した（2026-11-01 管理者）。初期値は1番目（1E）
 CF_FLAG = 0x203e2a     # ON/OFF（共有RAM $103E2A。#57 で $103813 → $103ED7 に移したが、$103ED7 は V_CEW（$103ED6.w）の下半分で毎フレーム消されていた → #73 で $103E2A へ。メニューから始めるたびに OFF）
 HT_VAL = 0x203e2b      # #92 HUNTER TIME（ポーズ。0=OFF 1〜100=0〜99秒。共有RAM $103E2B。再開のときメインの HtApply が使って 0 に戻す）
+LG_FLAG = 0x203e25     # #100 LAG METER（ポーズ。0=OFF 1=ON。共有RAM $103E25。メニューから始めるたびに OFF）
 HD_FLAG = 0x2039c6     # #96 HUNTER DISP（ポーズ。0=OFF 1=ON。共有RAM の空き $1039C6。メニューから始めるたびに OFF）
 CF_N    = 12           # 反応の何フレーム前から光らせるか
 def _white_pal():
@@ -363,6 +364,10 @@ def build_data(base):
     al(); lab['LNGFX'] = base + len(blob); blob.extend(line_tiles())
     al(); lab['LNCOL'] = base + len(blob); blob.extend(line_cols())
     al(); lab['LNPAL'] = base + len(blob); blob.extend(line_pal())
+    al(); lab['LGGFX'] = base + len(blob)   # #100 処理落ちメーターの棒（6色: 白=0xF（パレット0）・青6・緑A・黄C・橙D・赤E（パレット6））
+    for c in 'f6acde':
+        rows = ['........'] + [c * 6 + '..'] * 6 + ['........']
+        blob.extend(bytes(int(r[i] if r[i] != '.' else '0', 16) << 4 | int(r[i+1] if r[i+1] != '.' else '0', 16) for r in rows for i in range(0, 8, 2)))
     al(); lab['PLUSGFX'] = base + len(blob)
     blob.extend(PLUS_GFX)
     al(); lab['BANGGFX'] = base + len(blob)
@@ -401,6 +406,7 @@ def build_data(base):
     for i in range(6): put('EN_%d' % i, b'%d     \0' % i)
     put('ED_1', b'DOUBLE\0'); put('ED_2', b'LASER \0'); put('ED_0', b'OFF   \0')
     put('PS_OFF', b'OFF\0')
+    put('PS_LG0', b'oLAG METER\0'); put('PS_LG1', b' LAG METER\0')   # #100 処理落ちメーター
     put('PS_HC0', b'oHUNTER DISP\0'); put('PS_HC1', b' HUNTER DISP\0'); put('HC_NO', b'---   \0'); put('HD_T', b'HUNTER>\0')   # #96 次のハンターまでの秒を画面の右上に出す（ON/OFF）
     put('PS_HT0', b'oHUNTER TIME\0'); put('PS_HT1', b' HUNTER TIME\0'); put('HT_OFF', b'OFF   \0')   # #92 閉じてから何秒後にオプションハンターを出すか
     al(); lab['HTTAB'] = base + len(blob); blob.extend(struct.pack('>I', 101))   # 値 0 = OFF（変えない）、1〜100 = 0〜99秒（文字は PDraw が作る）
@@ -429,7 +435,8 @@ def build_data(base):
                          ('PS_TM0', 'PS_TM1', 0, 0),
                          ('PS_CS0', 'PS_CS1', CS_FLAG, 'CSTAB'),
                          ('PS_HT0', 'PS_HT1', HT_VAL, 'HTTAB'),
-                         ('PS_HC0', 'PS_HC1', HD_FLAG, 0)]:   # 22 = HUNTER DISP（#96。いつも出す。ON で段4に次のハンターまでの秒）   # 21 = HUNTER TIME（#92。キューブラッシュ以外）   # 20 = CUBE SE（#60。キューブラッシュだけ。CUBE FLASH の下）   # 19 = TIME（#55。NO DEATH のときだけ。値は PDraw が $203E10 から作る）   # 18 = CUBE FLASH（#48。キューブラッシュだけ）   # 17 = HIT DISP（#38。いつも出す）
+                         ('PS_HC0', 'PS_HC1', HD_FLAG, 0),
+                         ('PS_LG0', 'PS_LG1', LG_FLAG, 0)]:   # 23 = LAG METER（#100。いつも出す）   # 22 = HUNTER DISP（#96。いつも出す。ON で段4に次のハンターまでの秒）   # 21 = HUNTER TIME（#92。キューブラッシュ以外）   # 20 = CUBE SE（#60。キューブラッシュだけ。CUBE FLASH の下）   # 19 = TIME（#55。NO DEATH のときだけ。値は PDraw が $203E10 から作る）   # 18 = CUBE FLASH（#48。キューブラッシュだけ）   # 17 = HIT DISP（#38。いつも出す）
         blob.extend(struct.pack('>IIII', lab[a], lab[b], f, lab[vt] if vt else 0))
     # STAGE DISP のエリア: 面1〜10 × 12。本来のエリア（英字）だけ（❶〜❹ は使わない＝手前の英字のまま。2026-10-28 管理者）
     #   STLAB = 英字（残りは 0）、STPRG = その開始進行度（メニューの表 PROGTBL と同じ値）
@@ -847,6 +854,7 @@ mi_ah:  move.b  (a0),(a1)+
         clr.b   $203f34.l       ; CUBE COLOR
         clr.b   $203e2a.l       ; CUBE FLASH（#48・#57・#73）
         clr.b   HD_FLAG.l       ; HUNTER DISP（#96）
+        clr.b   LG_FLAG.l       ; LAG METER（#100）
         move.b  #1,$203e23.l    ; CUBE SE（#60）: 初期値は 1E（#94）
         lea     $100830.l,a0    ; #94 くっついたキューブの分の音の控え（サブのRAM $100830〜$1008EF）を消す
         moveq   #47,d0
@@ -2609,7 +2617,9 @@ PI_CF   = 18
 PI_CS   = 20               ; #60 CUBE SE
 PI_TIME = 19               ; #55 NO DEATH の残り時間（読むだけ。値は PDraw が作る）
 HT_VAL  = $203e2b
+LG_FLAG = $203e25
 HD_FLAG = $2039c6
+PI_LG   = 23               ; #100 LAG METER（ON/OFF）
 PI_HC   = 22               ; #96 HUNTER DISP（ON/OFF）
 PI_HT   = 21               ; #92 HUNTER TIME（閉じてから何秒後にオプションハンターを出すか。値 HT_VAL: 0=OFF 1〜100=0〜99秒。再開のときメインの HtApply が使う）
 ; ---- 出す項目の表を作る: いつもの6つ ＋ NO DEATH なら装備と MISS ＋ キューブラッシュならキューブの5つ。d6 = 数 ----
@@ -2630,6 +2640,7 @@ pm_nt:
         move.b  #PI_HIT,(a0)+
         move.b  #PI_HT,(a0)+    ; HUNTER TIME（#92）もキューブラッシュのほかで出す
         move.b  #PI_HC,(a0)+    ; HUNTER DISP（#96）はその下
+        move.b  #PI_LG,(a0)+    ; LAG METER（#100）はその下
 pm_nh:
         cmpi.b  #1,$203f0b.l    ; 装備と MISS は NO DEATH のときだけ（2026-10-29 管理者。INVINCIBLE はリリースで外すので）
         bne.s   pm_c
@@ -2651,6 +2662,7 @@ pm_k2:  addq.b  #1,d0
         cmpi.b  #PI_CUBE+5,d0
         bcs.s   pm_k
         move.b  #PI_HC,(a0)+    ; キューブラッシュでは HUNTER DISP（#96）をキューブの項目の下に
+        move.b  #PI_LG,(a0)+    ; LAG METER（#100）はその下
 pm_x:   move.l  a0,d6
         subi.l  #V_PMAP,d6
         move.b  d6,V_PCNT.l
@@ -2819,6 +2831,118 @@ pt_ok:  divu    #60,d5          ; 下位 = 秒
 ; ---- HUNTER DISP（#96）: 段4 の右上（桁38〜50。POS DISP が出ているときは桁24〜36）に「HUNTER>nnnn S」= 次のハンターまでの秒（ハンターの時間 ÷ (60 × オプションの数)）。
 ;      オプションなしは数えないので「---」。ボス戦などで止まっている間はその時点の残り。HUNTER TIME で変えると再開した瞬間から変わる。
 ;      NO DEATH の残り30秒の表示（段4・桁27〜）が出ている間は出さない
+; ---- #100 処理落ちメーター（ポーズの LAG METER）: 直近32フレーム（約0.5秒）のうち、ゲームの処理が落ちたフレームの割合を
+;      段4・桁12〜21 の10マスの棒で出す。0% は白（1マス）、処理落ちがあれば 青→緑→黄→橙→赤（赤は80%〜）で、割合ぶんの長さ。
+;      数え方: サブの IRQ2（毎フレーム。IRQ1 の処理が待たされていても割り込める）が V_VB を数え、メインは1回分の処理ごとに
+;      共有RAM $103E0E を数える（StubIn）。差が「落ちたフレーム」。ポーズ中はメインが止まるので数えない
+V_VB    = $103788          ; IRQ2 の回数（.w）
+V_LVB   = $10378a          ; 前に見た V_VB
+V_LGC   = $10378c          ; 前に見たメインの回数
+V_LGH   = $103790          ; 直近32フレームの落ちた印（.l。1=落ちた）
+V_LGL   = $103794          ; 出しているか（OFF にしたら消す）
+V_LGD   = $103795          ; 描いた形（長さ×8＋色。同じなら描き直さない）
+LG_GFX  = $280e80          ; 文字 $74〜$79 の絵（$280000 + $74*32。フォントの使わない字＝1〜10面・メニューで参照されない。#97: $E80〜 は3面の地形が使うので避けた）
+LG_COL  = 12               ; 左端の桁（見えるのは桁12〜51。段4 の右は HUNTER DISP（桁24〜）・NO DEATH の時間（桁27〜）が使う）
+LagMeter:
+        move.w  V_VB.l,d0       ; いつも差を取り直す（OFF やポーズの後に、たまった分を一度に数えないように）
+        move.w  $203e0e.l,d1
+        move.w  d0,d2
+        sub.w   V_LVB.l,d2      ; d2 = 画面の描き直しの回数
+        move.w  d1,d3
+        sub.w   V_LGC.l,d3      ; d3 = ゲームの処理の回数
+        move.w  d0,V_LVB.l
+        move.w  d1,V_LGC.l
+        tst.b   MBS_RUN.l
+        beq.w   lg_off
+        cmpi.b  #2,TOPSTATE.l
+        bne.w   lg_off
+        tst.b   LG_FLAG.l
+        beq.w   lg_off
+        cmpi.b  #1,MBS_PAUS.l   ; ポーズ中は数えない（棒はそのまま）
+        beq.w   lg_x
+        cmpi.w  #8,d2           ; 長く止まっていた（サブの都合など）ときは数えない
+        bhi.w   lg_x
+        sub.w   d3,d2           ; d2 = 落ちたフレーム数
+        bpl.s   lg_1
+        moveq   #0,d2
+lg_1:   move.w  d3,d4           ; 処理したフレームは 0、落ちたフレームは 1 を、古い方から押し出して入れる
+        add.w   d2,d4
+        beq.s   lg_c
+        subq.w  #1,d4
+        move.l  V_LGH.l,d5
+lg_sh:  add.l   d5,d5
+        tst.w   d2
+        beq.s   lg_s0
+        addq.l  #1,d5
+        subq.w  #1,d2
+lg_s0:  dbf     d4,lg_sh
+        move.l  d5,V_LGH.l
+lg_c:   move.l  V_LGH.l,d5      ; d6 = 1 の数（0〜32）
+        moveq   #0,d6
+        moveq   #31,d4
+lg_n:   add.l   d5,d5
+        bcc.s   lg_n0
+        addq.w  #1,d6
+lg_n0:  dbf     d4,lg_n
+        moveq   #1,d4           ; d4 = 長さ（0% は1マス）・d5 = 色（0=白 1青 2緑 3黄 4橙 5赤）
+        moveq   #0,d5
+        tst.w   d6
+        beq.s   lg_d
+        move.w  d6,d4           ; 長さ = 切り上げ(d6×10/32)
+        mulu    #10,d4
+        addi.w  #31,d4
+        lsr.w   #5,d4
+        move.w  d6,d5           ; 色 = 1 + (d6×5−1)/32 （20%ごと。赤は 80%〜）
+        mulu    #5,d5
+        subq.w  #1,d5
+        lsr.w   #5,d5
+        addq.w  #1,d5
+lg_d:   move.w  d4,d0
+        lsl.w   #3,d0
+        add.w   d5,d0
+        move.b  d0,V_LGD.l      ; 毎フレーム描き直す（ゲームがこの段を消すことがあるため）
+        move.b  #1,V_LGL.l
+        lea     LGGFX.l,a0      ; 棒の字（6色）を用意する（ゲームが START 表示でこの字を消すので、消えていたら入れ直す）
+        move.l  4(a0),d1
+        cmp.l   LG_GFX+4.l,d1
+        beq.s   lg_dr
+        lea     LG_GFX.l,a1
+        move.w  #47,d0          ; 6字 × 8ロング − 1
+lg_cp:  move.l  (a0)+,(a1)+
+        dbf     d0,lg_cp
+lg_dr:  move.w  #4,d1           ; 段4・桁 LG_COL〜 に10マス
+        lsl.w   #6,d1
+        addi.w  #LG_COL,d1
+        add.w   d1,d1
+        lea     TILEA.l,a1
+        adda.w  d1,a1
+        moveq   #0,d1           ; 属性: 白はパレット0（ゲームの文字の白）、色はパレット6。文字の上位 0
+        tst.w   d5
+        beq.s   lg_a
+        move.b  #$c0,d1
+lg_a:   move.b  d5,d2
+        addi.b  #$74,d2         ; 文字 $74＋色
+        moveq   #9,d0
+        moveq   #0,d3
+lg_w:   cmp.w   d4,d3
+        bcc.s   lg_bl
+        move.b  d2,$4001(a1)
+        move.b  d1,1(a1)
+        bra.s   lg_nx
+lg_bl:  move.b  #$10,$4001(a1)  ; 空白
+        move.b  #0,1(a1)
+lg_nx:  addq.w  #2,a1
+        addq.w  #1,d3
+        dbf     d0,lg_w
+lg_x:   rts
+lg_off: tst.b   V_LGL.l
+        beq.s   lg_x
+        clr.b   V_LGL.l
+        move.w  #LG_COL,d0
+        move.w  #4,d1
+        moveq   #9,d7
+        jmp     ClrFld.l
+
 V_HDL   = $1036ca          ; 出しているか（OFF にしたら消す）
 HuntDisp: tst.b MBS_RUN.l
         beq.w   hd_x

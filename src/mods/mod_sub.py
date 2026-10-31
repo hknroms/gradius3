@@ -421,6 +421,10 @@ StickPix:
         jmp     $7ed2.l         ; 純正: ドットを描く
 sp_x:   rts
 
+; ---- #100 サブの IRQ2（毎フレーム。IRQ1 の処理が待たされていても割り込める）で回数を数える（処理落ちメーター）----
+Irq2Hk: addq.w  #1,$103788.l    ; V_VB（mod_menu）
+        jmp     $86da.l
+
 ; ---- 毎フレーム ----
 Frame:
         jsr     CubeSe.l        ; #60
@@ -551,6 +555,7 @@ fr_nr:  jsr     NdDown.l        ; #53 NO DEATH の10面の下へ降りる区間
 HITDISPCALL        jsr     StChk.l
         jsr     PosChk.l
         jsr     HuntDisp.l      ; #96
+        jsr     LagMeter.l      ; #100
         jsr     NdDisp.l
         jsr     NdMsg.l
         cmpi.b  #1,MBS_PAUS.l
@@ -795,5 +800,6 @@ def apply(rom):
     rom.put('sub', 0x877c, bytes.fromhex('4eb9') + lab['SprHook'].to_bytes(4, 'big') + bytes.fromhex('4e714e714e71'), 'menubg-spr', expect=bytes.fromhex('610000d213fc000000203936'))
     rom.put('sub', DATA_BASE, data, 'menudata')
     # IRQ1 ハンドラ(0xc6e)内の jsr $5c8 (0xc88) → jsr IrqHook
+    rom.put('sub', 0xcc4, bytes.fromhex('4eb9') + lab['Irq2Hk'].to_bytes(4, 'big'), 'irq2hook-100', expect=bytes.fromhex('4eb9000086da'))
     rom.put('sub', 0xc88, bytes.fromhex('4eb9') + lab['IrqHook'].to_bytes(4, 'big'), 'irq1hook', expect=bytes.fromhex('4eb9000005c8'))
     return lab, len(b)
