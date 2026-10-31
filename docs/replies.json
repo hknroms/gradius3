@@ -2,6 +2,16 @@
  "_how": "配布ページのトップに出る「報告への回答」。Google フォームから報告してくれた方には、こちらから返事を返す手段がないので、ここに書いて気づいてもらう。要らなくなったら手で消す。新しいものを上に書く。",
  "replies": [
   {
+   "issue": 94,
+   "date": "2026-10-31",
+   "title": "キューブが反応する瞬間の SE について",
+   "body": "感想とご提案をありがとうございます。SE の既定を「1E」にする件と、くっついて反応しなくなったキューブの分も、本来反応するはずだった時刻に鳴らして毎回同じリズムにする件を、検討します。",
+   "en": {
+    "title": "About the sound effect when a cube reacts",
+    "body": "Thank you for your comments and suggestions. We will consider making \"1E\" the default sound, and also playing the sound for cubes that stuck before reacting, at the time they would have reacted, so the rhythm is the same every time."
+   }
+  },
+  {
    "issue": 90,
    "date": "2026-10-31",
    "title": "キューブラッシュで「0」の字が化ける・WEAPON SELECT でもスコアが出たまま",
