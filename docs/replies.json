@@ -5,10 +5,10 @@
    "issue": 94,
    "date": "2026-10-31",
    "title": "キューブが反応する瞬間の SE について",
-   "body": "感想とご提案をありがとうございます。SE の既定を「1E」にする件と、くっついて反応しなくなったキューブの分も、本来反応するはずだった時刻に鳴らして毎回同じリズムにする件を、検討します。",
+   "body": "感想とご提案をありがとうございます。次の版で、CUBE SE を 1E・0E・15・1C の4つにし、初めから 1E が鳴るようにします（29・01 はなくします。15 と 1C は、1E のような短くて低めの音から選んだものです）。また、くっついて反応しなかったキューブ（出現から反応まで160フレーム以下のもの）の分も、反応するはずだった時刻に鳴らすようにします。毎回同じリズムで練習できるようになります。",
    "en": {
     "title": "About the sound effect when a cube reacts",
-    "body": "Thank you for your comments and suggestions. We will consider making \"1E\" the default sound, and also playing the sound for cubes that stuck before reacting, at the time they would have reacted, so the rhythm is the same every time."
+    "body": "Thank you for your comments and suggestions. In the next version, CUBE SE will have four sounds, 1E, 0E, 15 and 1C, with 1E on from the start (29 and 01 are removed; 15 and 1C are short, lower sounds similar to 1E). Cubes that stick before reacting (those that react within 160 frames of appearing) will also play the sound at the time they would have reacted, so the rhythm is the same every time."
    }
   },
   {
