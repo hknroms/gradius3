@@ -329,6 +329,7 @@ rs_vis: tst.b   $203818.l       ; 自分で隠したときだけ戻す
 ;   メインはキューブが反応したフレームで $2A を 0→1 にする（$262A2）。サブは枠ごとに前のフレームの $2A を控えておき、
 ;   0→0以外 に変わった枠があれば音の依頼を置く（遅れは最大1フレーム。反応の直前の $3A=0 を見る方法は、
 ;   メインとサブのフレームのずれで約4%取りこぼしたのでやめた）
+CG_I    = $100830          ; #94 （CG_L = +64・CG_T = +128。$100830〜$1008EF。純正が書かないサブのRAM）
 V_SEA   = $103768          ; 枠ごとの前のフレームの「反応した」（32バイト。$103768〜$103787）
 CubeSe: moveq   #0,d2
         moveq   #0,d3
@@ -357,6 +358,48 @@ cse_l:  moveq   #0,d0
 cse_n:  move.b  d0,(a1)+
         lea     $50(a0),a0
         dbf     d6,cse_l
+; #94 くっついて反応しなかったキューブの分も、反応するはずだった時刻に鳴らす（出現から反応まで160フレーム以下のものだけ）。
+;   枠ごとに CG_I = 出たときの待ち（$3A。0 = 見ていない）、CG_L = 最後に見た残り、CG_T = 鳴らすまでの残り（サブのRAM。メニューで消す）
+        cmpi.b  #1,MBS_PAUS.l   ; ポーズ中は数えない（メインも止まっている）
+        beq.s   cg_x
+        lea     $202320.l,a0
+        lea     CG_I.l,a1
+        moveq   #31,d6
+cg_l:   tst.b   (a0)
+        beq.s   cg_g
+        cmpi.w  #$3301,$28(a0)
+        bne.s   cg_g
+        tst.b   $2a(a0)         ; 反応した → 普通に鳴る。見るのをやめる
+        bne.s   cg_g
+        move.w  $3a(a0),d0
+        tst.b   $26(a0)         ; くっついた（まだ反応していない）
+        bne.s   cg_s
+        tst.w   (a1)
+        bne.s   cg_k
+        move.w  d0,d1           ; 出たばかり: 待ちを控える（0 にならないように +1）
+        addq.w  #1,d1
+        move.w  d1,(a1)
+cg_k:   move.w  d0,64(a1)       ; CG_L
+        bra.s   cg_t
+cg_s:   tst.w   (a1)
+        beq.s   cg_t
+        cmpi.w  #161,(a1)       ; 出てから反応まで160フレーム以下のものだけ
+        bhi.s   cg_g
+        move.w  64(a1),d1       ; CG_T = 最後に見た残り − 1（普通に反応したときの音と同じフレームになるように。MAME で合わせた）
+        subq.w  #1,d1
+        bgt.s   cg_s2
+        moveq   #1,d1
+cg_s2:  move.w  d1,128(a1)
+cg_g:   clr.w   (a1)
+cg_t:   tst.w   128(a1)         ; 鳴らすまでの残り
+        beq.s   cg_n
+        subq.w  #1,128(a1)
+        bne.s   cg_n
+        moveq   #1,d2
+cg_n:   addq.l  #2,a1
+        lea     $50(a0),a0
+        dbf     d6,cg_l
+cg_x:
         tst.b   d2
         beq.s   cse_x
         tst.b   d3

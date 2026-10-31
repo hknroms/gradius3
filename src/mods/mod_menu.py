@@ -234,9 +234,9 @@ def line_pal():
 
 # ---- CUBE FLASH（#48）: 反応する少し前から反応するまで、そのキューブを白っぽく光らせる。
 # 色は CUBE COLOR の9つ目（灰色＝反応しない）の枠を白に替えて使う（CUBE FLASH が ON の間、反応しないキューブは元の色のまま）
-CS_FLAG = 0x203e23     # CUBE SE（#60。0=OFF / 1〜=CUBE_SE の何番目の音。共有RAM $103E23。メニューから始めるたびに OFF）
+CS_FLAG = 0x203e23     # CUBE SE（#60。0=OFF / 1〜=CUBE_SE の何番目の音。共有RAM $103E23。メニューから始めるたびに 1 = 1E（#94））
 # キューブが反応する瞬間の音（#60）: (表示, 音の番号)。表示は6文字まで。サブの CSE_TBL もここから作る
-CUBE_SE = [('SE 0E ', 0x0e), ('SE 29 ', 0x29), ('SE 01 ', 0x01), ('SE 1E ', 0x1e)]
+CUBE_SE = [('SE 1E ', 0x1e), ('SE 0E ', 0x0e)]   # #94 29・01 は消した（BGM に埋もれる）。初期値は1番目（1E）
 CF_FLAG = 0x203e2a     # ON/OFF（共有RAM $103E2A。#57 で $103813 → $103ED7 に移したが、$103ED7 は V_CEW（$103ED6.w）の下半分で毎フレーム消されていた → #73 で $103E2A へ。メニューから始めるたびに OFF）
 HT_VAL = 0x203e2b      # #92 HUNTER TIME（ポーズ。0=OFF 1〜100=0〜99秒。共有RAM $103E2B。再開のときメインの HtApply が使って 0 に戻す）
 CF_N    = 12           # 反応の何フレーム前から光らせるか
@@ -842,7 +842,11 @@ mi_ah:  move.b  (a0),(a1)+
         clr.b   $203f0c.l
         clr.b   $203f34.l       ; CUBE COLOR
         clr.b   $203e2a.l       ; CUBE FLASH（#48・#57・#73）
-        clr.b   $203e23.l       ; CUBE SE（#60）
+        move.b  #1,$203e23.l    ; CUBE SE（#60）: 初期値は 1E（#94）
+        lea     $100830.l,a0    ; #94 くっついたキューブの分の音の控え（サブのRAM $100830〜$1008EF）を消す
+        moveq   #47,d0
+mi_cg:  clr.l   (a0)+
+        dbf     d0,mi_cg
         clr.b   $203f33.l       ; CUBE HUNTER（始めは OFF = 出さない）
         jsr     ClrAll.l
         jsr     MbgInit.l
