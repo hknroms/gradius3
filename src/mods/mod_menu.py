@@ -1202,6 +1202,17 @@ mf_ag:  move.b  (a1)+,(a0)+
         moveq   #127,d0
 mf_ah:  move.b  (a1)+,(a0)+
         dbf     d0,mf_ah
+; ---- NO DEATH の時間・キューブラッシュの残機ボーナス（#40）: DSW1 bit7（負論理。1=OFF＝10分・+5 / 0=ON＝5分・+2）。
+;      以前はメインの ApplyStart で決めていた（メインの空きを作るためサブに移した #70）。DSW1 はメインが毎フレーム $103814 に写す
+        moveq   #5,d1
+        move.l  #36000,d0
+        btst    #7,$203814.l
+        bne.s   mf_dt
+        moveq   #2,d1
+        move.l  #18000,d0
+mf_dt:  move.l  d0,$203e10.l     ; ND_LEFT
+        move.l  d0,$203e1c.l     ; ND_TIME（CmdCnt の延長で使う）
+        move.b  d1,$203e20.l     ; ND_BONUS（メインの ApplyStart の sk_set で使う）
         move.b  #1,MBS_DONE.l
         rts
 mf_cancel:

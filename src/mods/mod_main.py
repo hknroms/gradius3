@@ -27,6 +27,7 @@ EXTRA_AREAS = os.environ.get('EXTRA_AREAS') == '1'    # 場所を調整して足
 ND_FRAMES = 36000        # NO DEATH（#36）の1クレジットの時間（フレーム。10分）
 ND_LEFT = 0x103e10       # NO DEATH の残りフレーム.l（共有RAM。以前ボスラッシュの表を置いていた所）
 ND_FLAG = 0x103e1a       # NO DEATH の印（共有RAM。MODE 1=NO DEATH と MODE 3=CUBE NO DEATH で立つ。#39）
+ND_BONUS = 0x103e20      # CUBE RUSH の残機ボーナス（+5 か +2。サブがメニュー確定時に置く。#40・#70）
 ND_TIME = 0x103e1c       # NO DEATH の時間（.l フレーム。ディップスイッチ #40 で 36000 か 18000）
 MB = 0x103f00           # メールボックス（共有RAM。サブ側は 0x203f00）
 # オフセット
@@ -75,6 +76,7 @@ MB_INV   = $103f20
 ND_LEFT  = ${ND_LEFT:x}
 ND_FLAG  = ${ND_FLAG:x}
 ND_TIME  = ${ND_TIME:x}
+ND_BONUS = ${ND_BONUS:x}
 ND_FRAMES = {ND_FRAMES}
 RAMMAGIC = ${RAMMAGIC:x}
 MAGICVAL = ${MAGICVAL:x}
@@ -255,14 +257,7 @@ ApplyStart:                     ; メニュー確定直後: 改造プレイ開�
         tst.b   MB_MODE.l
         beq.s   as_1
         st      $103f22.l
-as_1:   moveq   #5,d1           ; d1 = CUBE RUSH 残機ボーナス (OFF=+5, sk_set 内で使用)
-        move.l  #ND_FRAMES,d0   ; d0 = 時間 (OFF=36000フレーム=10分)
-        tst.b   $d0001.l        ; DSW1 bit7 (#40 負論理): N= bit7（1=OFF/default・0=ON）
-        bmi.s   as_1t
-        moveq   #2,d1           ; ON = +2機
-        move.l  #18000,d0       ; ON = 5分
-as_1t:  move.l  d0,ND_LEFT.l
-        move.l  d0,ND_TIME.l    ; CmdCnt の延長・CUBE NO DEATH で使う
+as_1:   move.b  ND_BONUS.l,d1   ; d1 = CUBE RUSH 残機ボーナス（sk_set で使う）。ND_LEFT・ND_TIME と一緒にサブがメニュー確定時に DSW1 bit7 から作る（#40。メインの空きを作るためサブに移した #70）
         lea     $101000.l,a0
         bsr.s   sk_set
         lea     $101080.l,a0
@@ -866,10 +861,6 @@ StageHook:
         beq.w   sh_go
         tst.b   $4002b.l
         bne.s   sh_pl
-        moveq   #0,d0           ; キューブの数列を初期化(開始・再開のたび同じ並びにする)
-        move.b  $103f1d.l,d0
-        mulu    #40503,d0
-        move.w  d0,$103e30.l
         bclr    #2,MB_PEND.l    ; 開始時1回だけ: 面・周回・エリアを反映
         beq.s   sh_m
         jsr     ApplyStage.l

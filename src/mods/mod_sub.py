@@ -290,6 +290,13 @@ Frame:
         beq.s   fr_es
         moveq   #1,d0
 fr_es:  move.b  d0,$203e2e.l
+        moveq   #1,d0           ; #31 高次周のリセットの修正を効かせるか（メインのガードが見る。1=効かせる 0=純正のバグを残す）:
+        tst.b   MBS_RUN.l       ;   メニューから始めたら必ず効かせる。START だけのときは SW1:5（DSW1 bit4・負論理。1=OFF=初期値）が OFF なら効かせる
+        bne.s   fr_31
+        btst    #4,$203814.l
+        bne.s   fr_31
+        moveq   #0,d0
+fr_31:  move.b  d0,$203e21.l    ; FIX31（共有RAM $103E21。ゲームが消さない所）
         lea     LNPAL.l,a0      ; パレット6 の 6〜15番（CUBE LINE の色と見出しの色）→ 共有RAM $103dec（メインが毎フレーム写す）
         lea     $203dec.l,a1
         moveq   #4,d0
