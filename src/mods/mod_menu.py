@@ -1213,6 +1213,13 @@ mf_ah:  move.b  (a1)+,(a0)+
 mf_dt:  move.l  d0,$203e10.l     ; ND_LEFT
         move.l  d0,$203e1c.l     ; ND_TIME（CmdCnt の延長で使う）
         move.b  d1,$203e20.l     ; ND_BONUS（メインの ApplyStart の sk_set で使う）
+        move.w  #$ff00,$203f38.l ; 以下、以前はメインの ApplyStart で書いていた（メインの空きを作るためサブに移した #70・#63）
+        clr.b   $203f21.l        ; START 押下時間
+        move.b  #1,$203f22.l     ; 装備コマンドの残り回数: 通常1回 / キューブ・ボスラッシュは無制限($ff)
+        tst.b   $203f0b.l        ; MODE（CUBE NO DEATH は上で 2 にしてある）
+        beq.s   mf_c1
+        st      $203f22.l
+mf_c1:
         move.b  #1,MBS_DONE.l
         rts
 mf_cancel:

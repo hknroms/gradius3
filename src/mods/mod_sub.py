@@ -287,8 +287,12 @@ Frame:
         cmpi.b  #9,$201051.l
         bne.s   fr_es
         btst    #3,MBS_SYS.l
-        beq.s   fr_es
+        beq.s   fr_ar
+        tst.b   $203e22.l       ; 押し直し: START を離したのを見てから（$103E22=1）押されたときだけ。メインがエンディングの段階 0 で $103E22 を 0 に戻す
+        beq.s   fr_es           ;   → START を押したままエンディングに入ってきたら、いったん離すまで飛ばさない（#63）
         moveq   #1,d0
+        bra.s   fr_es
+fr_ar:  move.b  #1,$203e22.l    ; START を離している
 fr_es:  move.b  d0,$203e2e.l
         moveq   #1,d0           ; #31 高次周のリセットの修正を効かせるか（メインのガードが見る。1=効かせる 0=純正のバグを残す）:
         tst.b   MBS_RUN.l       ;   メニューから始めたら必ず効かせる。START だけのときは SW1:5（DSW1 bit4・負論理。1=OFF=初期値）が OFF なら効かせる

@@ -11,9 +11,9 @@ local OUT = io.open(os.getenv("OLOG"), "w")
 emu.register_frame_done(function()
   f = f + 1
   if f % 100 == 0 or f == 1760 or f == 1800 then
-    OUT:write(string.format("f%d run=%02x mode=%02x ndl=%08x ndt=%08x lives=%02x bonus=%02x fix31=%02x dsw=%02x st=%02x e3a=%04x e36=%04x\n", f,
+    OUT:write(string.format("f%d run=%02x mode=%02x ndl=%08x ndt=%08x lives=%02x bonus=%02x fix31=%02x dsw=%02x st=%02x e3a=%04x e36=%04x f22=%02x f38=%04x f21=%02x\n", f,
       main:read_u8(0x103f07), main:read_u8(0x103f0b), main:read_u32(0x103e10), main:read_u32(0x103e1c),
-      main:read_u8(0x101050), main:read_u8(0x103e20), main:read_u8(0x103e21), main:read_u8(0x103814), main:read_u8(0x40029), main:read_u16(0x103e3a), main:read_u16(0x103e36)))
+      main:read_u8(0x101050), main:read_u8(0x103e20), main:read_u8(0x103e21), main:read_u8(0x103814), main:read_u8(0x40029), main:read_u16(0x103e3a), main:read_u16(0x103e36), main:read_u8(0x103f22), main:read_u16(0x103f38), main:read_u8(0x103f21)))
     OUT:flush()
   end
 end)

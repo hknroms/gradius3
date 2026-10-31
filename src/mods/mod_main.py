@@ -251,12 +251,7 @@ chunk('ApplyStart', """
 ApplyStart:                     ; メニュー確定直後: 改造プレイ開始の印だけ付ける（面・周回は ApplyStage で後から）
         move.b  #1,MB_RUN.l
         move.b  #7,MB_PEND.l
-        move.w  #$ff00,$103f38.l
-        clr.b   $103f21.l       ; START 押下時間
-        move.b  #1,$103f22.l    ; 装備コマンドの残り回数: 通常1回 / キューブ・ボスラッシュは無制限($ff)
-        tst.b   MB_MODE.l
-        beq.s   as_1
-        st      $103f22.l
+                                ; $103f38・START 押下時間 $103f21・装備コマンドの残り回数 $103f22 はサブがメニュー確定時に置く（#70・#63）
 as_1:   move.b  ND_BONUS.l,d1   ; d1 = CUBE RUSH 残機ボーナス（sk_set で使う）。ND_LEFT・ND_TIME と一緒にサブがメニュー確定時に DSW1 bit7 から作る（#40。メインの空きを作るためサブに移した #70）
         lea     $101000.l,a0
         bsr.s   sk_set
@@ -644,12 +639,14 @@ cs_x:   move.b  $40032.l,d5
 # 段階 1 から先で START が押されたら、最後の段階 $12（$3085C: オプション等を戻し・物体と文字の面を消して次の周へ）へ飛ばす。
 # 段階 0（オプションなどを $43900 に控える）は飛ばさない。状態7はめったに通らないので隙間の列に置く
 chunk('EndSkip', """
-EndSkip: tst.b  $103e2e.l      ; サブが立てる: 改造プレイ・10面・1P START を押している（場所が足りないので条件はサブで作る）
-        beq.s   es_x
-        lea     $4002d.l,a6     ; a6 は $3C28 が使い直す
+EndSkip: lea    $4002d.l,a6     ; a6 は $3C28 が使い直す
         tst.b   (a6)            ; 段階 0 は飛ばさない（段階は 0〜$12 だけ。$12 に $12 を書いても同じ）
+        beq.s   es_0
+        tst.b   $103e2e.l      ; サブが立てる: 改造プレイ・10面・1P START を「押し直した」（場所が足りないので条件はサブで作る）
         beq.s   es_x
         move.b  #$12,(a6)
+        bra.s   es_x
+es_0:   clr.b   $103e22.l      ; 段階 0（エンディングの入り口）で「押し直し待ち」に戻す（START を押したまま入ってきたら、離すまで飛ばさない。#63 alamone さんの指摘）
 es_x:   jmp     $3c28.l
 """)
 chunk('PalCopy', """
