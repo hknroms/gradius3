@@ -13,12 +13,12 @@
   },
   {
    "issue": 90,
-   "date": "2026-10-31",
+   "date": "2026-11-01",
    "title": "キューブラッシュで「0」の字が化ける・WEAPON SELECT でもスコアが出たまま",
-   "body": "ご報告と画像をありがとうございます。キューブラッシュで使っている表示が、字の絵を借りたまま戻していない可能性が高いと考えています。調べて直します。直ったら、ここと更新履歴でお知らせします。",
+   "body": "ご報告と画像をありがとうございます。原因が分かり、直しました（次の版に入ります）。キューブが地形にくっつくとき、ゲームはキューブの絵を地形の字に描き込みますが、キューブラッシュでは一部の場所で数字の「0」の字に描き込んでしまっていました。表示の ON/OFF とは関係ありませんでした。WEAPON SELECT の上のスコアの段は純正でも出ているもので、そこの「0」も同じ原因で化けていました。",
    "en": {
     "title": "In Cube Rush the \"0\" character gets corrupted / the score stays on the WEAPON SELECT screen",
-    "body": "Thank you for the report and the image. We think one of the Cube Rush displays borrows character graphics and does not put them back. We will look into it and fix it, and let you know here and in the update history."
+    "body": "Thank you for the report and the image. We found the cause and fixed it (in the next version). When a cube sticks to the terrain, the game draws the cube into the terrain characters; in Cube Rush, at some spots it was drawing into the character for the digit \"0\". It was not related to the pause display settings. The score line at the top of WEAPON SELECT is also shown in the original, and its \"0\"s were corrupted for the same reason."
    }
   },
   {
