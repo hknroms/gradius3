@@ -10,7 +10,7 @@
 // ※ GitHub Pages は誰でも見られるファイルしか置けないので、これは「入口の扉」。中身の Issue などは GitHub で公開されている。
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getFirestore, doc, getDoc, setDoc, addDoc, collection, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyAVuANsHQGEDSEujscNoCXWlixBKAAIw1U',
@@ -57,6 +57,11 @@ function open(user) {
     bar.querySelector('button').onclick = () => signOut(auth);
     document.body.prepend(bar);
   }
+  // 「確かめてほしいこと」のボタン（testplay.html）: 押されたことを Firestore の rechecks に残す。
+  // 申請の管理画面の Apps Script（tools/notify-gas の check、5分ごと）が読んで GitHub に「[確認] #番号」の報告を作り、ボットが元の報告に記録する
+  window.sendRecheck = (issue, result, version) => addDoc(collection(db, 'rechecks'), {
+    uid: user.uid, name: user.displayName || '', email: user.email || '', issue: Number(issue), result: String(result), version: String(version || ''), createdAt: serverTimestamp(),
+  });
   window.dispatchEvent(new CustomEvent('gate-open', { detail: { email: user.email } }));
 }
 

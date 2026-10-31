@@ -217,12 +217,27 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
       box.classList.remove('sub');
     }
     // 確かめてほしいこと: 直した（/fixed）けれど、まだ「直っていた」の確認がないもの
+    let SENT = {}; try { SENT = JSON.parse(localStorage.getItem('g3-rechecked') || '{}'); } catch {}
     const todo = all.filter(i => { const st = state(i); return st.fixed_in && !(st.confirmed || []).length; }).sort((a, b) => b.number - a.number);
     if (todo.length) {
       const form = (i, res) => 'https://github.com/hknroms/gradius3/issues/new?' + [['template', 'testplay_en.yml'], ['title', '[Check] #' + i.number + ' ' + strip(i.title)],
         ['kind', 'Re-check of a fix'], ['version', latest || state(i).fixed_in], ['origin', '#' + i.number], ['recheck', res]].map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
       $('#rc-list').innerHTML = todo.map(i => '<div class="rc"><span class="t"><a href="' + esc(i.html_url) + '" target="_blank" rel="noopener">' + esc(strip(i.title)) + '</a></span><span class="v">' + esc(state(i).fixed_in) + ' fixed</span>' +
-        '<div class="b"><a class="ok" href="' + esc(form(i, 'fixed')) + '" target="_blank" rel="noopener">✅ Fixed</a><a class="ng" href="' + esc(form(i, 'still broken')) + '" target="_blank" rel="noopener">⚠️ Still broken</a></div></div>').join('');
+        '<div class="b">' + (SENT[i.number] ? '<span class="sub">✅ Sent. Thank you</span>' :
+          '<a class="ok" data-rc="' + i.number + '" data-res="直っていた" data-ver="' + esc(latest || state(i).fixed_in) + '" href="' + esc(form(i, 'fixed')) + '" target="_blank" rel="noopener">✅ Fixed</a>' +
+          '<a class="ng" data-rc="' + i.number + '" data-res="まだおかしい" data-ver="' + esc(latest || state(i).fixed_in) + '" href="' + esc(form(i, 'still broken')) + '" target="_blank" rel="noopener">⚠️ Still broken</a>') + '</div></div>').join('');
+      // Pressing a button sends it right away (stored with your Google sign-in; we record it on GitHub. Nothing to do on GitHub)
+      $('#rc-list').onclick = async e => {
+        const a = e.target.closest('a[data-rc]'); if (!a || !window.sendRecheck) return;
+        e.preventDefault();
+        const b = a.parentElement, n = a.dataset.rc, r = a.dataset.res, gh = a.href;
+        b.innerHTML = '<span class="sub">Sending…</span>';
+        try {
+          await window.sendRecheck(n, r, a.dataset.ver);
+          SENT[n] = r; try { localStorage.setItem('g3-rechecked', JSON.stringify(SENT)); } catch {}
+          b.innerHTML = '<span class="sub">✅ Sent. Thank you (it will be recorded in a few minutes)' + (r === 'まだおかしい' ? '. If you can, please add details with the report form above' : '') + '</span>';
+        } catch (err) { b.innerHTML = '<span class="sub">Could not send (' + esc(err.code || err.message) + ').</span><a href="' + esc(gh) + '" target="_blank" rel="noopener">Send on GitHub</a>'; }
+      };
       $('#rc-count').textContent = todo.length + '';
       $('#recheck').style.display = 'block';
     }

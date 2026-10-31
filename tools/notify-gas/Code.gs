@@ -191,10 +191,38 @@ function forwardResponse_(r) {
   return true;
 }
 
+// ═══ 「確かめてほしいこと」のボタン（docs/testplay.html）═══
+// 押されると、ページが Firestore の rechecks に1件作る（ルールは dev/firebase/firestore.rules）。
+// ここで GitHub に「[確認] #番号 直っていた／まだおかしい」の報告を作り（フォームの「直ったかの確認」と同じ形）、ボットが元の報告に記録する。載せたら消す。
+function forwardRechecks_() {
+  const props = PropertiesService.getScriptProperties();
+  const token = props.getProperty('GITHUB_TOKEN'); if (!token) return;
+  const failed = JSON.parse(props.getProperty('RC_FAILED') || '[]');
+  listDocs_('rechecks').forEach(d => {
+    const n = Number(d.issue);
+    if (!n) { req_('delete', DOCS + 'rechecks/' + d._id); return; }
+    const bad = d.result === 'まだおかしい';
+    const sec = (h, v) => '### ' + h + '\n\n' + (v ? v : '_No response_') + '\n\n';
+    const when = d.createdAt ? Utilities.formatDate(new Date(d.createdAt), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm') : '';
+    const title = '[確認] #' + n + ' ' + (bad ? 'まだおかしい' : '直っていた');
+    const body = sec('報告の種類', '直ったかの確認') + sec('版', d.version || '') + sec('確認した元の報告', '#' + n) + sec('確認の結果', bad ? 'まだおかしい' : '直っていた') +
+      '---\n_配布ページの「確かめてほしいこと」のボタンから届いた確認です（' + when + '）。_\n';
+    const res = UrlFetchApp.fetch('https://api.github.com/repos/' + GH_REPO + '/issues', { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+      headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' }, payload: JSON.stringify({ title: title, body: body }) });
+    if (res.getResponseCode() === 201) { req_('delete', DOCS + 'rechecks/' + d._id); return; }
+    if (failed.indexOf(d._id) < 0) {   // 失敗は1件につき1回だけ知らせる（次の check でまた試す）
+      failed.push(d._id); props.setProperty('RC_FAILED', JSON.stringify(failed.slice(-100)));
+      MailApp.sendEmail({ to: adminEmail_(), subject: '【' + SITE_NAME + '】確認のボタンを GitHub に載せられませんでした', name: SITE_NAME,
+        body: 'GitHub ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 500) + '\n\n' + title + '\n' + (d.name || '') + ' ' + (d.email || '') });
+    }
+  });
+}
+
 // ═══ 定期実行 ═══
 
 function check() {
   const lock = LockService.getScriptLock(); if (!lock.tryLock(20000)) return;
+  try { forwardRechecks_(); } catch (e) { Logger.log('rechecks: ' + e); }
   try {
     const props = PropertiesService.getScriptProperties();
     const first = !props.getProperty('initialized');

@@ -50,5 +50,21 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time;
       allow delete: if false;
     }
+
+    // 「確かめてほしいこと」のボタン（docs/testplay.html の「直っていた／まだおかしい」）。承認された人が押すと1件作る。
+    // ページからは読めない・変えられない。申請の管理画面（Apps Script・持ち主の権限）が5分ごとに読んで GitHub に載せ、消す。
+    match /rechecks/{id} {
+      allow create: if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved'
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'email', 'issue', 'result', 'version', 'createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.name is string && request.resource.data.name.size() <= 200
+        && request.resource.data.issue is int && request.resource.data.issue > 0 && request.resource.data.issue < 100000
+        && request.resource.data.result in ['直っていた', 'まだおかしい']
+        && request.resource.data.version is string && request.resource.data.version.size() <= 20
+        && request.resource.data.createdAt == request.time;
+      allow read, update, delete: if false;
+    }
   }
 }
