@@ -238,6 +238,7 @@ CS_FLAG = 0x203e23     # CUBE SE（#60。0=OFF / 1〜=CUBE_SE の何番目の音
 # キューブが反応する瞬間の音（#60）: (表示, 音の番号)。表示は6文字まで。サブの CSE_TBL もここから作る
 CUBE_SE = [('SE 0E ', 0x0e), ('SE 29 ', 0x29), ('SE 01 ', 0x01), ('SE 1E ', 0x1e)]
 CF_FLAG = 0x203e2a     # ON/OFF（共有RAM $103E2A。#57 で $103813 → $103ED7 に移したが、$103ED7 は V_CEW（$103ED6.w）の下半分で毎フレーム消されていた → #73 で $103E2A へ。メニューから始めるたびに OFF）
+HT_VAL = 0x203e2b      # #92 HUNTER TIME（ポーズ。0=OFF 1〜100=0〜99秒。共有RAM $103E2B。再開のときメインの HtApply が使って 0 に戻す）
 CF_N    = 12           # 反応の何フレーム前から光らせるか
 def _white_pal():
     P = _stage9_pal()
@@ -398,6 +399,8 @@ def build_data(base):
     for i in range(6): put('EN_%d' % i, b'%d     \0' % i)
     put('ED_1', b'DOUBLE\0'); put('ED_2', b'LASER \0'); put('ED_0', b'OFF   \0')
     put('PS_OFF', b'OFF\0')
+    put('PS_HT0', b'oHUNTER TIME\0'); put('PS_HT1', b' HUNTER TIME\0'); put('HT_OFF', b'OFF   \0')   # #92 閉じてから何秒後にオプションハンターを出すか
+    al(); lab['HTTAB'] = base + len(blob); blob.extend(struct.pack('>I', 101))   # 値 0 = OFF（変えない）、1〜100 = 0〜99秒（文字は PDraw が作る）
     # ポーズの項目: 選択中の文字列.l 通常の文字列.l ON/OFF の場所.l(0=なし)
     put('PS_V0', b'oCUBE LINE\0')     # #49 縦と横をまとめた（値は縦の値。横はこれに合わせる）
     put('PS_V1', b' CUBE LINE\0')
@@ -421,7 +424,8 @@ def build_data(base):
                          ('PS_HB0', 'PS_HB1', HB_FLAG, 0),
                          ('PS_CF0', 'PS_CF1', CF_FLAG, 'CFTAB'),
                          ('PS_TM0', 'PS_TM1', 0, 0),
-                         ('PS_CS0', 'PS_CS1', CS_FLAG, 'CSTAB')]:   # 20 = CUBE SE（#60。キューブラッシュだけ。CUBE FLASH の下）   # 19 = TIME（#55。NO DEATH のときだけ。値は PDraw が $203E10 から作る）   # 18 = CUBE FLASH（#48。キューブラッシュだけ）   # 17 = HIT DISP（#38。いつも出す）
+                         ('PS_CS0', 'PS_CS1', CS_FLAG, 'CSTAB'),
+                         ('PS_HT0', 'PS_HT1', HT_VAL, 'HTTAB')]:   # 21 = HUNTER TIME（#92。キューブラッシュ以外）   # 20 = CUBE SE（#60。キューブラッシュだけ。CUBE FLASH の下）   # 19 = TIME（#55。NO DEATH のときだけ。値は PDraw が $203E10 から作る）   # 18 = CUBE FLASH（#48。キューブラッシュだけ）   # 17 = HIT DISP（#38。いつも出す）
         blob.extend(struct.pack('>IIII', lab[a], lab[b], f, lab[vt] if vt else 0))
     # STAGE DISP のエリア: 面1〜10 × 12。本来のエリア（英字）だけ（❶〜❹ は使わない＝手前の英字のまま。2026-10-28 管理者）
     #   STLAB = 英字（残りは 0）、STPRG = その開始進行度（メニューの表 PROGTBL と同じ値）
@@ -874,7 +878,7 @@ CubeHud:
         move.b  d2,$203e3f.l
         lsl.w   #2,d1
         add.w   d2,d1
-        mulu    #90,d1          ; (h*4+s)*45 語
+        mulu    #92,d1          ; (h*4+s)*45 語
         lea     CUBETBL.l,a2
         adda.l  d1,a2
         moveq   #0,d4           ; t
@@ -2582,6 +2586,8 @@ PI_HIT  = 17
 PI_CF   = 18
 PI_CS   = 20               ; #60 CUBE SE
 PI_TIME = 19               ; #55 NO DEATH の残り時間（読むだけ。値は PDraw が作る）
+HT_VAL  = $203e2b
+PI_HT   = 21               ; #92 HUNTER TIME（閉じてから何秒後にオプションハンターを出すか。値 HT_VAL: 0=OFF 1〜100=0〜99秒。再開のときメインの HtApply が使う）
 ; ---- 出す項目の表を作る: いつもの6つ ＋ NO DEATH なら装備と MISS ＋ キューブラッシュならキューブの5つ。d6 = 数 ----
 PMap:   lea     V_PMAP.l,a0
         moveq   #0,d0
@@ -2598,6 +2604,7 @@ pm_nt:
         cmpi.b  #2,$203f0b.l    ; HIT DISP（#38）はキューブラッシュ（CUBE NO DEATH も始めると 2）のほかで出す（2026-10-30 管理者）
         beq.s   pm_nh
         move.b  #PI_HIT,(a0)+
+        move.b  #PI_HT,(a0)+    ; HUNTER TIME（#92）もキューブラッシュのほかで出す
 pm_nh:
         cmpi.b  #1,$203f0b.l    ; 装備と MISS は NO DEATH のときだけ（2026-10-29 管理者。INVINCIBLE はリリースで外すので）
         bne.s   pm_c
@@ -2719,6 +2726,8 @@ pd_u:   movem.l d4/a2,-(a7)
         lea     V_PMAP.l,a3     ; TIME（#55）は値の場所を持たないので、ここで作って描く
         cmpi.b  #PI_TIME,0(a3,d4.w)
         beq.w   pd_tm
+        cmpi.b  #PI_HT,0(a3,d4.w)
+        beq.w   pd_ht
         move.l  8(a2),d0
         beq.s   pd_nx
         movea.l d0,a3
@@ -2781,6 +2790,31 @@ pt_ok:  divu    #60,d5          ; 下位 = 秒
         lea     V_TMP.l,a0
         bra.w   pd_v
 
+; ---- HUNTER TIME（#92）: OFF か「nn SEC」 ----
+pd_ht:  lea     HT_OFF.l,a0
+        moveq   #0,d5
+        move.b  HT_VAL.l,d5
+        beq.w   pd_v
+        subq.w  #1,d5
+        divu    #10,d5
+        lea     V_TMP.l,a0
+        move.b  d5,d7
+        addi.b  #$30,d7
+        cmpi.b  #$30,d7
+        bne.s   ph_1
+        moveq   #$20,d7         ; 十の位の 0 は空白
+ph_1:   move.b  d7,(a0)+
+        swap    d5
+        addi.b  #$30,d5
+        move.b  d5,(a0)+
+        move.b  #$20,(a0)+
+        move.b  #$53,(a0)+      ; S
+        move.b  #$45,(a0)+      ; E
+        move.b  #$43,(a0)+      ; C
+        clr.b   (a0)
+        lea     V_TMP.l,a0
+        bra.w   pd_v
+
 ; ---- ポーズを開いたとき: 装備の項目に、いまの装備を入れる（1P の自機 $201000） ----
 EqRead: lea     $201000.l,a0
         lea     EQ_REQ.l,a1
@@ -2825,6 +2859,7 @@ PauseFrame:
         bne.s   pf_run
         move.b  #1,V_PST.l
         clr.b   V_PSEL.l
+        clr.b   HT_VAL.l        ; HUNTER TIME（#92）は開くたびに OFF
         move.b  MBS_P1.l,V_PPIN.l
         move.b  MBS_SYS.l,V_PSIN.l
         bsr.w   EqRead

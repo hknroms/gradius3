@@ -333,6 +333,7 @@ pc_g1:  move.b  #1,$50(a0)
         rts
 pc_res: clr.b   MB_PAUS.l
         jsr     EqApply.l       ; ポーズで装備を変えていたら、やり直す
+        jsr     HtApply.l       ; #92 ポーズの HUNTER TIME
         moveq   #0,d0
         rts
 pc_chk: lea     $103f21.l,a0    ; 1P START: 短く押す=装備コマンド / 約1秒押し続ける=ポーズ
@@ -354,6 +355,29 @@ pc_up:  move.b  (a0),d1
         rts
 pc_no:  moveq   #0,d0
         rts
+""")
+
+# ---- #92 ポーズの HUNTER TIME（サブが $103E2B に 0=OFF / 1〜100=0〜99秒 を置く）: 閉じてから何秒後にオプションハンターを出すか ----
+# 純正（$12696〜）は $42E70 からオプションの数だけ毎フレーム引き、借りが出たら出す（$42E72≠0 なら引かずにすぐ出す）。
+# n 秒 → $42E70 = n×60×オプションの数（オプションなしは1つ分＝付けたら数え始める）。0 秒 → $42E72=1。1周目の最初の面など純正が出さない所では出ない
+chunk('HtApply', """
+HtApply: moveq  #0,d0
+        move.b  $103e2b.l,d0
+        beq.s   ht_r
+        clr.b   $103e2b.l
+        subq.w  #1,d0
+        bne.s   ht_t
+        move.b  #1,$42e72.l     ; 0 秒: すぐ出す。次の時間は純正が出したときと同じ $FFFF から
+        move.w  #$ffff,$42e70.l
+        rts
+ht_t:   mulu    #60,d0
+        moveq   #7,d1
+        and.b   $101068.l,d1
+        bne.s   ht_m
+        moveq   #1,d1
+ht_m:   mulu    d1,d0
+        move.w  d0,$42e70.l
+ht_r:   rts
 """)
 
 # ---- ポーズで装備を変えた（無敵のとき。サブが EQ_REQ $103e14 を立て、+1〜+5 に SPEED MISSILE DOUBLE/LASER OPTION SHIELD を置く）----
