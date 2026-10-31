@@ -101,8 +101,8 @@ def _rgb15(h):
 _ZY = [0x00, 0x01, 0x03, 0x05, 0x07, 0x09, 0x0a, 0x0c, 0x0e, 0x0f, 0x11, 0x12, 0x14, 0x15, 0x16, 0x18, 0x19, 0x1a, 0x1c, 0x1d, 0x1e, 0x1f, 0x20, 0x21,
        0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2e, 0x2f, 0x30, 0x31, 0x31, 0x32, 0x33, 0x34, 0x34, 0x35, 0x36,
        0x36, 0x37, 0x38, 0x38, 0x39, 0x39, 0x3a, 0x3b, 0x3b, 0x3c, 0x3c, 0x3d, 0x3d, 0x3e, 0x3e, 0x3f]
-def _spr_ent(pri, code, size, col, cx, cy, z=0):
-    """中心 (cx, cy)（画面のドット）に置くスプライトの表の8バイト。縮小 z は x・y とも同じ値（K051960 と同じ計算で左上を出す）"""
+def _spr_ent(pri, code, size, col, cx, cy, z=0, flip=False):
+    """中心 (cx, cy)（画面のドット）に置くスプライトの表の8バイト。縮小 z は x・y とも同じ値（K051960 と同じ計算で左上を出す）。flip = 左右反転"""
     w, h = [1, 2, 1, 2, 4, 2, 4, 8][size], [1, 1, 2, 2, 2, 4, 4, 8][size]
     zx = 0x10000 // 128 * (128 - z)
     zy = 128 - _ZY[z]
@@ -112,17 +112,22 @@ def _spr_ent(pri, code, size, col, cx, cy, z=0):
     pw, ph = (zx * w) >> 12, (zy * h) >> 12
     x, y = cx - pw // 2, cy - ph // 2
     rx, ry = (x + 96) & 0x1ff, (240 - y) & 0x1ff
-    return bytes([0x80 | pri, (size << 5) | ((code >> 8) & 0x1f), code & 0xff, col, (z << 2) | (ry >> 8), ry & 0xff, (z << 2) | (rx >> 8), rx & 0xff])
+    return bytes([0x80 | pri, (size << 5) | ((code >> 8) & 0x1f), code & 0xff, col, (z << 2) | (ry >> 8), ry & 0xff, (z << 2) | (2 if flip else 0) | (rx >> 8), rx & 0xff])
 ROCK_C = (288, 80)        # 石の中心（ステージの行の右・ビッグコアMk-IIIの上）
 CUBE_C = (255, 151)       # 回るキューブの中心（キューブの並びの見本の枠の真ん中）
+# 向きの絵（ゲームの5面ボス戦の絵。左向き・斜め・正面。右向きは左右反転）: 小さい頭 / ふくらんだ頭 / 大きい頭
+_ROCK_FACE = {'s': (0x11c0, 0x11c8, 0x11cc), 'm': (0x11ec, 0x11f4, 0x11f8), 'b': (0x1200, 0x1220, 0x1230)}
 def rock_anim():
-    """[フレーム数.b, 8バイト]... + 終わり 0。ゲームの5面ボス戦で記録した絵の番号・縮小・時間（色は石 = パレット2・爆発 = 6）"""
+    """[フレーム数.b, 8バイト]... + 終わり 0。爆発までに 左→正面→右→正面→左 と一往復向きを変える（2026-10-31 管理者）。
+    大きさ・縮小・時間はゲームで記録した値（色は石 = パレット2・爆発 = 6）"""
     cx, cy = ROCK_C
-    R = lambda code, size, z: _spr_ent(0x7f, code, size, 0x25, cx, cy, z)        # 0x25 = 石（番号の bit13 あり・パレット2）
+    def R(kind, face, z):   # face: -2=左 -1=左斜め 0=正面 1=右斜め 2=右
+        code = _ROCK_FACE[kind][2 - abs(face)]
+        return _spr_ent(0x7f, code, 6 if kind == 'b' else 3, 0x25, cx, cy, z, flip=face > 0)   # 0x25 = 石（番号の bit13 あり・パレット2）
     X = lambda code: _spr_ent(0x7f, code, 6, 0x2c, cx, cy, 0)                  # 0x2c = 爆発（パレット6）
-    steps = [(30, R(0x11c0, 3, 60))]
-    for _ in range(3): steps += [(2, R(0x11c8, 3, 60)), (2, R(0x11cc, 3, 60)), (2, R(0x11c4, 3, 60)), (14, R(0x11c0, 3, 60))]   # 撃たれて光る
-    steps += [(9, R(0x11ec, 3, 60)), (9, R(0x11ec, 3, 28)), (8, R(0x1200, 6, 60)), (7, R(0x1200, 6, 28)), (4, R(0x1200, 6, 0))]   # ふくらむ
+    steps = [(18, R('s', f, 60)) for f in (-2, -1, 0, 1, 2)]                 # 小さい頭: 左 → 右
+    steps += [(9, R('m', 1, 60)), (9, R('m', 0, 28))]                        # ふくらむ: 右斜め → 正面
+    steps += [(8, R('b', -1, 60)), (7, R('b', -2, 28)), (4, R('b', -2, 0))]   # 大きい頭: 左斜め → 左
     steps += [(4, X(0x610)), (4, X(0x620)), (4, X(0x630)), (4, X(0x6b0))]   # 破裂
     steps += [(50, bytes(8))]                                                # 間
     return b''.join(bytes([n]) + e for n, e in steps) + b'\0'
