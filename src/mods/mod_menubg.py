@@ -7,7 +7,7 @@ D = os.path.join(os.path.dirname(__file__), 'menubg')
 F = 7440
 DIM = 0.40
 COLSHIFT = 10
-SHD_X, SHD_Y = int(os.environ.get('SHDX', '333')), int(os.environ.get('SHDY', '185'))
+SHD_X, SHD_Y = int(os.environ.get('SHDX', '333')), int(os.environ.get('SHDY', '209'))   # #75 SHIELD COLOR を一番下の行へ移したので 185 → 209（上の行へはみ出す）
 FF_DX, FF_DY = int(os.environ.get('FFDX', '14')), int(os.environ.get('FFDY', '0'))
 SHIP, SHIP_OX, SHIP_OY = 71, int(os.environ.get('SHIPX', '184')), int(os.environ.get('SHIPY', '148'))   # 自機のスプライト番号と位置（スプライト座標）          # 記録時の A面スクロール(0x160) → メニュー中(0x1b0) の差 = 80ドット = 10タイル
 

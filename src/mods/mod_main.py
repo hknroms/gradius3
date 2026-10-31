@@ -746,6 +746,10 @@ PalCopy: tst.b  $103e34.l
         move.w  #255,d0
 pc_l:   move.w  (a0)+,(a1)+
         dbf     d0,pc_l
+        lea     $80060.l,a1     ; #75 文字の面のパレット3（キューブの並びの見本の色。サブが $102200 に置く）
+        moveq   #15,d0
+pc_d:   move.w  (a0)+,(a1)+
+        dbf     d0,pc_d
 pc_r:   rts
 """)
 # 0x1d24 の jsr $326e（CREDIT の表示）を置き換え: 隠しメニュー表示中（トップ状態3）は出さない

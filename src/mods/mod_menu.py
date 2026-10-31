@@ -65,10 +65,10 @@ ITEMS = [
     ('CUBE HEIGHT', 1, 0, 16, 0x35, ['RANDOM'] + [str(i) for i in range(1, 17)], 0),   # キューブラッシュの並び: 3つとも RANDOM = 純正のまま
     ('      SHIFT', 1, 0, 4, 0x36, ['RANDOM', 'A', 'B', 'C', 'D'], 0),
     ('       TYPE', 1, 0, 45, 0x37, ['RANDOM'] + ['%02d' % i for i in range(1, 46)], 0),
-    ('SHIELD COLOR', 1, 1, 10, 0x16, ['?', 'BLUE', 'RED', 'GREEN', 'GOLD', 'PURPLE', 'CYAN', 'ORANGE', 'PINK', 'SILVER', 'BLACK'], 1),
-    ('HUNTER NEXT', 1, 0, 3, 0x1b, ['DEFAULT', 'TYPE 1', 'TYPE 2', 'TYPE 3'], 0),
     ('FULL POWER   SPEED', 0, 0, 5, 0x0d, None, 3),       # フル装備コマンドのスピード（スピードアップを使った回数）
     ('FULL POWER CAPSULE', 1, 0, 7, 0x23, ['OFF', 'SPEEDUP', 'MISSILE', 'DOUBLE', 'LASER', 'OPTION', '_', '\x8c'], 6),   # フル装備コマンドの後のカプセルゲージの位置。'_'=? / 0x8c=!（描き足した字）
+    ('HUNTER NEXT', 1, 0, 3, 0x1b, ['DEFAULT', 'TYPE 1', 'TYPE 2', 'TYPE 3'], 0),
+    ('SHIELD COLOR', 1, 1, 10, 0x16, ['?', 'BLUE', 'RED', 'GREEN', 'GOLD', 'PURPLE', 'CYAN', 'ORANGE', 'PINK', 'SILVER', 'BLACK'], 1),   # #75 SHIELD COLOR を一番下に（見本の絵は上にはみ出す）
 ]
 # 各項目の画面の行（可視は行2〜29）。面の表の後・CUBE の後に1行ずつ空ける
 ROWS = [2, 3, 5] + list(range(7, 19)) + [20, 21, 22] + [24, 25, 26, 27]   # INVINCIBLE が一番上、最下段は PUSH START
@@ -87,6 +87,29 @@ def _stage9_pal():
     import os
     pal = open(os.path.join(os.path.dirname(__file__), 'cubecol', 'pal_stage9.bin'), 'rb').read()
     return [(pal[i*2] << 8) | pal[i*2+1] for i in range(0x200)]
+# ---- #75 スタートメニューのキューブの並びの見本（点）: キューブの3行にカーソルがある間だけ、右下（桁36〜51・段17〜24）に32個を点で出す ----
+# 文字の面に、借りた字 0xC00〜0xC7F（128字。メニューの間だけ。ゲームが始まると START 表示で上書きされるのを確認）にドットで描く。
+# 色は文字の面のパレット3（ゲームも改造も使っていないのを確認）: 1〜8 = 反応する位置の色（CUBE COLOR と同じ順）・9 = 反応しない（灰）・
+# 10 = 右寄りの2か所（元の氷の色）・11 = 枠・12 = 目盛りの線・13 = 黒（不透明）。メインの PalCopy が $102200 から写す
+DOT_W = [64, 176, 32, 224, 80, 208, 160, 112, 48, 128, 80, 96, 144, 192, 64, 16]   # 何個目か>>1 で引く待ち時間（解析ページの W と同じ）
+DOT_CATX = [254, 222, 190, 158, 126, 94, 62, 30]
+DOT_HY = [208, 192, 176, 160, 144, 144, 128, 128, 112, 112, 96, 96, 80, 64, 48, 32]
+def _rgb15(h):
+    r, g, b = (int(h[i:i + 2], 16) for i in (1, 3, 5))
+    return ((r * 31 + 127) // 255 << 10) | ((g * 31 + 127) // 255 << 5) | ((b * 31 + 127) // 255)
+def dot_palette():
+    cols = ['#1e8cff', '#00c8e6', '#00d98c', '#2ecc40', '#9be22d', '#ffd400', '#ff8a00', '#ff1a1a', '#8a8f98', '#9fd4ff', '#5a5aaa', '#232346', '#000000']
+    return struct.pack('>16H', 0, *[_rgb15(c) for c in cols], 0, 0)
+def dot_cat():
+    out = []
+    for n in range(1, 33):
+        w = DOT_W[(n >> 1) & 15]
+        x = 350 - 2 * w
+        out.append(9 if w >= 171 else (DOT_CATX.index(x) + 1 if x in DOT_CATX else 10))
+    return bytes(out)
+def dot_level():
+    lv = {y: i + 1 for i, y in enumerate(sorted(set(DOT_HY), reverse=True))}
+    return bytes(lv[y] for y in DOT_HY)
 def cube_tint_palettes():
     P = _stage9_pal()
     src = P[29*16:29*16+16]                       # キューブの色（パレット29）
@@ -250,6 +273,9 @@ def build_data(base):
     put('ROWMAP', bytes(ROWS))
     put('HELP1', b'UP DOWN SELECT  LEFT RIGHT CHANGE\0')
     put('HELP2', b'PUSH START\0')
+    put('DOTPAL', dot_palette())      # #75
+    put('DOTCAT', dot_cat())
+    put('DOTLV', dot_level())
     put('MODECV', bytes(x for t in MODECV for x in t + (0,)))   # メニューの MODE → (動いているときの MODE, ND_FLAG, その場復活, 0)
     put('PS_T', b'PAUSE\0')
     put('RK_T', b'RANK>\0')
@@ -549,13 +575,19 @@ da_next:
         bcs.w   da_row
         rts
 
-; ---- 値の桁: 上の3行（INVINCIBLE・MODE・LOOP）は面の表の A の桁、ほかは COL_VAL ----
+; ---- 値の桁: 上の3行（INVINCIBLE・MODE・LOOP）は面の表の A の桁、キューブの3行は B の桁（#75。RANDOM の R を EX STAGE の B に合わせる）、ほかは COL_VAL ----
 ValCol:
         move.w  #%(colval)d,d0
         cmpi.b  #3,V_I.l
-        bcc.s   vc_r
+        bcc.s   vc_c
         move.w  #GRIDCOL,d0
 vc_r:   rts
+vc_c:   cmpi.b  #CUBE0,V_I.l
+        bcs.s   vc_r
+        cmpi.b  #CUBE0+2,V_I.l
+        bhi.s   vc_r
+        move.w  #GRIDCOL+2,d0
+        rts
 
 ; ---- CUBE HEIGHT/SHIFT/TYPE の行（d7=項目番号）をキューブラッシュ以外で飛ばす: ne=飛ばす（d3 を使う）----
 ; メニュー表示時なので $203f0b は未変換（1=NO DEATH 2=CUBE RUSH 3=CUBE NO DEATH）。CUBE NO DEATH は NO DEATH と CUBE RUSH の両方の性質を持つ
@@ -1055,8 +1087,14 @@ MbgInit:
         move.w  #255,d0
 mb_pl:  move.w  (a0)+,(a1)+
         dbf     d0,mb_pl
+        lea     DOTPAL.l,a0     ; #75 キューブの並びの見本の色（文字の面のパレット3。メインの PalCopy が $102200 から写す）
+        lea     $202200.l,a1
+        moveq   #15,d0
+mb_dp:  move.w  (a0)+,(a1)+
+        dbf     d0,mb_dp
         move.b  #1,$203e34.l
         move.b  #$ff,V_SHL.l
+        clr.b   V_DOTV.l
         rts
 
 MenuFrame:
@@ -1158,7 +1196,7 @@ mf_nb1: tst.b   V_DIRTY.l
         beq.w   mf_ret
         clr.b   V_DIRTY.l
         jsr     DrawAll.l
-mf_ret: rts
+mf_ret: jmp     DotPanel.l      ; #75 キューブの並びの見本（DrawAll の後で毎フレーム置き直す）
 mf_go:  lea     $203f08.l,a0     ; 前回値として控える（モードで面・エリアを書き換える前に）
         lea     V_LBUF.l,a1
         moveq   #$27,d7
@@ -1258,11 +1296,208 @@ mf_dt:  move.l  d0,$203e10.l     ; ND_LEFT
         beq.s   mf_c1
         st      $203f22.l
 mf_c1:
+        jsr     DotOff.l        ; #75 見本を消してから抜ける（借りた字はゲームが上書きする）
         move.b  #1,MBS_DONE.l
         rts
 mf_cancel:
+        jsr     DotOff.l
         move.b  #2,MBS_DONE.l
         rts
+
+; ---- #75 キューブの並びの見本（点） ----
+; キューブの3行（CUBE HEIGHT/SHIFT/TYPE）にカーソルがある間だけ、桁36〜51・段17〜24（16×8字）に借りた字 0xC00〜0xC7F を並べる。
+; H・S・T が変わったときだけ字の絵を描き直す（DotPix）。字の並べ直しは毎フレーム（DrawAll の値の消去が桁43まで届くので）。
+; 字の番号 0xC00+n → 属性 $78（パレット3・番号の上位 $C）、番号の下位 = n
+V_DOTK  = $1036c0               ; 描いてある H・S・T（.l の下位3バイト）
+V_DOTV  = $1036c4               ; 出しているか
+DOTBASE = $298000               ; 字 0xC00 の絵（サブの $280000 + 0xC00*32）
+DOTCELL2 = 2248                 ; 左上の升目（段17・桁36）の文字の面の中の位置×2 = (17*64+36)*2
+DotPanel:
+        move.b  V_CUR.l,d0
+        cmpi.b  #CUBE0,d0
+        bcs.s   DotOff
+        cmpi.b  #CUBE0+2,d0
+        bhi.s   DotOff
+        move.l  $203f34.l,d1    ; $203f35〜37 = H・S・T
+        andi.l  #$ffffff,d1
+        tst.b   V_DOTV.l
+        beq.s   dp_new
+        cmp.l   V_DOTK.l,d1
+        beq.s   dp_map
+dp_new: move.l  d1,V_DOTK.l
+        move.b  #1,V_DOTV.l
+        bsr.w   DotPix
+dp_map: lea     TILEA.l,a1
+        adda.w  #DOTCELL2,a1
+        moveq   #0,d4
+        moveq   #7,d6
+dp_r1:  moveq   #15,d7
+        movea.l a1,a2
+dp_c1:  move.b  #$78,1(a2)
+        move.b  d4,$4001(a2)
+        addq.w  #2,a2
+        addq.b  #1,d4
+        dbf     d7,dp_c1
+        adda.w  #128,a1
+        dbf     d6,dp_r1
+        rts
+DotOff: tst.b   V_DOTV.l
+        beq.s   do_r
+        clr.b   V_DOTV.l
+        lea     TILEA.l,a1
+        adda.w  #DOTCELL2,a1
+        moveq   #7,d6
+do_r1:  moveq   #15,d7
+        movea.l a1,a2
+do_c1:  move.b  #0,1(a2)
+        move.b  #$10,$4001(a2)
+        addq.w  #2,a2
+        dbf     d7,do_c1
+        adda.w  #128,a1
+        dbf     d6,do_r1
+do_r:   rts
+
+; 1ドット: d0 = x(0〜127) d1 = y(0〜63) d2 = 色。d3・d4・a0 を壊す
+DotSet: move.w  d1,d3
+        lsr.w   #3,d3
+        lsl.w   #4,d3
+        move.w  d0,d4
+        lsr.w   #3,d4
+        add.w   d4,d3
+        lsl.w   #5,d3
+        move.w  d1,d4
+        andi.w  #7,d4
+        lsl.w   #2,d4
+        add.w   d4,d3
+        move.w  d0,d4
+        andi.w  #7,d4
+        lsr.w   #1,d4
+        add.w   d4,d3
+        lea     DOTBASE.l,a0
+        adda.w  d3,a0
+        btst    #0,d0
+        bne.s   ds_lo
+        andi.b  #$0f,(a0)
+        move.b  d2,d4
+        lsl.b   #4,d4
+        or.b    d4,(a0)
+        rts
+ds_lo:  andi.b  #$f0,(a0)
+        or.b    d2,(a0)
+        rts
+; 2×2 の点: d0 = x d1 = y(下の段) d2 = 色
+DotBig: bsr.s   DotSet
+        addq.w  #1,d0
+        bsr.s   DotSet
+        subq.w  #1,d1
+        bsr.s   DotSet
+        subq.w  #1,d0
+        bsr.s   DotSet
+        addq.w  #1,d1
+        rts
+
+; 字の絵を描く: 黒で塗る → 枠（色11）→ 目盛り（色12、段1・4・8・12）→ 32個（縦 = 高さ 12段、5ドットおき。下が1段目）
+DotPix: lea     DOTBASE.l,a0
+        move.l  #$dddddddd,d0
+        move.w  #1023,d1
+dx_f:   move.l  d0,(a0)+
+        dbf     d1,dx_f
+        moveq   #11,d2          ; 枠: 上下
+        moveq   #0,d0
+dx_h:   moveq   #0,d1
+        bsr.w   DotSet
+        moveq   #63,d1
+        bsr.w   DotSet
+        addq.w  #1,d0
+        cmpi.w  #128,d0
+        bcs.s   dx_h
+        moveq   #0,d1           ; 枠: 左右
+dx_v:   moveq   #0,d0
+        bsr.w   DotSet
+        moveq   #127,d0
+        bsr.w   DotSet
+        addq.w  #1,d1
+        cmpi.w  #64,d1
+        bcs.s   dx_v
+        moveq   #12,d2          ; 目盛り
+        lea     DOTGY.l,a1
+        moveq   #3,d6
+dx_g:   move.w  (a1)+,d1
+        moveq   #2,d0
+dx_g2:  bsr.w   DotSet
+        addq.w  #1,d0
+        cmpi.w  #126,d0
+        bcs.s   dx_g2
+        dbf     d6,dx_g
+; 高さ: 3つとも決めた → c0 = CUBETBL[((H-1)*4+(S-1))*45+(T-1)]、それ以外は d5 = -1（H だけなら1個目だけ）
+        moveq   #-1,d5
+        moveq   #0,d1
+        move.b  $203f35.l,d1    ; H
+        beq.s   dx_nc
+        tst.b   $203f36.l
+        beq.s   dx_nc
+        tst.b   $203f37.l
+        beq.s   dx_nc
+        subq.w  #1,d1
+        lsl.w   #2,d1
+        moveq   #0,d0
+        move.b  $203f36.l,d0
+        subq.w  #1,d0
+        add.w   d0,d1
+        mulu    #45,d1
+        moveq   #0,d0
+        move.b  $203f37.l,d0
+        subq.w  #1,d0
+        add.w   d0,d1
+        add.w   d1,d1
+        lea     CUBETBL.l,a1
+        moveq   #0,d5
+        move.w  0(a1,d1.w),d5   ; c0（0〜$fffc）
+dx_nc:  moveq   #0,d6           ; i = 0〜31
+dx_k:   move.w  d6,d0           ; x = 4 + (i*15)/4
+        mulu    #15,d0
+        lsr.w   #2,d0
+        addq.w  #4,d0
+        lea     DOTCAT.l,a1
+        move.b  0(a1,d6.w),d2
+        tst.l   d5
+        bmi.s   dx_unk
+        lea     CUBEDLT.l,a1    ; v = c0 + 間隔、高さの番号 = ((v の下位) xor (v の上位)) の bit2-5
+        move.w  d6,d1
+        add.w   d1,d1
+        move.w  0(a1,d1.w),d1
+        add.w   d5,d1
+        move.w  d1,d3
+        lsr.w   #8,d3
+        eor.b   d3,d1
+        andi.w  #$3c,d1
+        lsr.w   #2,d1
+        bra.s   dx_lv
+dx_unk: tst.w   d6              ; 1個目で H だけ決まっている → H の高さ
+        bne.s   dx_line
+        moveq   #0,d1
+        move.b  $203f35.l,d1
+        beq.s   dx_line
+        subq.w  #1,d1
+dx_lv:  lea     DOTLV.l,a1      ; 段 1〜12 → y = 59 − (段−1)*5
+        moveq   #0,d3
+        move.b  0(a1,d1.w),d3
+        subq.w  #1,d3
+        mulu    #5,d3
+        moveq   #59,d1
+        sub.w   d3,d1
+        bsr.w   DotBig
+        bra.s   dx_nx
+dx_line: moveq  #4,d1           ; 高さが分からない: その色の縦の点線（1段おき）
+dx_l2:  bsr.w   DotSet
+        addq.w  #2,d1
+        cmpi.w  #60,d1
+        bcs.s   dx_l2
+dx_nx:  addq.w  #1,d6
+        cmpi.w  #32,d6
+        bcs.w   dx_k
+        rts
+DOTGY:  dc.w    59,44,24,4
 """
 
 PAUSE = """
