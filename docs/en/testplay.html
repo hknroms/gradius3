@@ -73,15 +73,13 @@ kbd{border:1px solid var(--line)}
   Feedback, requests, bug reports and test play reports are all welcome.<br>
   Anything you notice, however small, helps us improve. Please send whatever you can, in English or Japanese.
   <div class="btns">
-    <a class="bigl" id="gh" href="https://github.com/hknroms/gradius3/issues/new?template=testplay_en.yml" target="_blank" rel="noopener"><b>▶ If you have a GitHub account</b><span>Fill in a simple form. You can attach screenshots and videos, and the status of your report appears on this page (reports are public).</span></a>
-    <a class="bigl g" id="gform" href="#" target="_blank" rel="noopener"><b>▶ If you don't</b><span>Send it with a Google Form (no GitHub account needed).</span></a>
+    <a class="bigl g" id="gform" href="#" target="_blank" rel="noopener"><b>▶ Open the report form</b><span>Send it with a Google Form.</span></a>
   </div>
-  <div class="sub">To create a GitHub account, see "Creating a GitHub account" below.</div>
   <div class="sub">We do not look at other people's mods or analysis. Please do not include such links; just tell us what happened.</div>
 </div>
 
 <div id="recheck" class="panel"><b>Please check these fixes</b> <span class="tag" id="rc-count"></span>
-  <div class="sub" style="margin:4px 0 4px">These were fixed in a new version. After playing, report with a button (the version and the original report are filled in). Without a GitHub account, use the Google Form above and write which report you checked and the result.</div>
+  <div class="sub" style="margin:4px 0 4px">These were fixed in a new version. After playing, report with a button. If it cannot be sent, use the report form above and write which report you checked and the result.</div>
   <div id="rc-list"></div>
 </div>
 
@@ -119,20 +117,6 @@ kbd{border:1px solid var(--line)}
   </ul>
 </details>
 
-<details class="box" id="github">
-  <summary>▶ Creating a GitHub account</summary>
-  <ol>
-    <li>Open <a href="https://github.com/signup" target="_blank" rel="noopener">github.com/signup</a> (or press "<b>Sign up</b>" at the top right of github.com).</li>
-    <li>Enter your <b>Email</b>, <b>Password</b> (15+ characters, or 8+ with a number and a lowercase letter) and <b>Username</b> (letters, numbers and hyphens; it is shown publicly on your reports, so it need not be your real name). Check <b>Your Country/Region</b>. You can leave <b>Email preferences</b> unchecked.</li>
-    <li>Press the green "<b>Create account</b>". (Some versions ask one item at a time with a "<b>Continue</b>" button.)</li>
-    <li>Solve the <b>puzzle</b> ("Verify") if one appears.</li>
-    <li>Enter the code from the email "<b>Your GitHub launch code</b>" in "<b>Enter code</b>". If it does not arrive, check your spam folder or press "<b>Resend the code</b>".</li>
-    <li>Sign in. If a survey or plan selection appears, press "<b>Skip personalization</b>" or "<b>Continue for free</b>". It is free.</li>
-    <li>Come back here and press "If you have a GitHub account".</li>
-  </ol>
-  <p class="sub">On the report form, type a short summary in "<b>Add a title</b>", fill in the fields, and press the green "<b>Create</b>" (or "Submit new issue"). Drag photos onto "<b>Paste, drop, or click to add files</b>" or click it to choose them. If your browser auto-translates the page, button labels may differ from this guide.</p>
-</details>
-
 <details class="box" id="mame">
   <summary>▶ Setting up MAME</summary>
   <h3>Recommended MAME</h3>
@@ -168,7 +152,6 @@ kbd{border:1px solid var(--line)}
 <details class="box" id="reports">
   <summary>▶ Previous reports and their status <span class="tag" id="rep-count"></span></summary>
   <div id="rep-list" class="sub">Loading…</div>
-  <div class="sub" style="margin-top:6px"><a href="https://github.com/hknroms/gradius3/issues?q=is%3Aissue%20%22%5B%E3%83%86%E3%82%B9%E3%83%88%5D%22%20in%3Atitle" target="_blank" rel="noopener">See all reports on GitHub</a> (if the same issue is already there, please add to it). Most reports are written in Japanese.</div>
 </details>
 
 <div class="sub" style="margin-top:24px">Gradius III is a work of KONAMI. This is an unofficial page for helpers of the mod patch.</div>
@@ -209,7 +192,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
     const strip = t => t.replace(/^\[(テスト|要望|作業)\]\s*/, '');
     const list = all.filter(isReport).sort((a, b) => b.number - a.number);
     $('#rep-count').textContent = list.length ? list.length + '' : '';
-    const row = i => { const [c, t] = status(i); return '<div class="rep"><span class="k">' + esc(kind(i)) + '</span><span class="t"><a href="' + esc(i.html_url) + '" target="_blank" rel="noopener">' + esc(strip(i.title)) + '</a></span><span class="s rs-' + c + '">' + esc(t) + '</span></div>'; };
+    const row = i => { const [c, t] = status(i); return '<div class="rep"><span class="k">' + esc(kind(i)) + '</span><span class="t">' + esc(strip(i.title)) + '</span><span class="s rs-' + c + '">' + esc(t) + '</span></div>'; };
     const N = 10;
     if (!list.length) box.textContent = 'None yet';
     else {
@@ -221,13 +204,12 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
     let SENT = {}; try { SENT = JSON.parse(localStorage.getItem('g3-rechecked') || '{}'); } catch {}
     const todo = all.filter(i => { const st = state(i); return isReport(i) && st.fixed_in && !(st.confirmed || []).length; })   // 報告（[テスト]・要望）だけ。管理者の作業の Issue は出さない（2026-11-01）.sort((a, b) => b.number - a.number);
     if (todo.length) {
-      const form = (i, res) => 'https://github.com/hknroms/gradius3/issues/new?' + [['template', 'testplay_en.yml'], ['title', '[Check] #' + i.number + ' ' + strip(i.title)],
-        ['kind', 'Re-check of a fix'], ['version', latest || state(i).fixed_in], ['origin', '#' + i.number], ['recheck', res]].map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
-      $('#rc-list').innerHTML = todo.map(i => '<div class="rc"><span class="t"><a href="' + esc(i.html_url) + '" target="_blank" rel="noopener"><span class="sub">#' + i.number + '</span> ' + esc(strip(i.title)) + '</a></span><span class="v">' + esc(state(i).fixed_in) + ' fixed</span>' +
+      const form = (i, res) => FORM_URL;   // 送れないときは報告フォーム（GitHub は開かない。2026-11-01）
+      $('#rc-list').innerHTML = todo.map(i => '<div class="rc"><span class="t"><span class="sub">#' + i.number + '</span> ' + esc(strip(i.title)) + '</span><span class="v">' + esc(state(i).fixed_in) + ' fixed</span>' +
         '<div class="b">' + (SENT[i.number] ? '<span class="sub">✅ Sent. Thank you</span>' :
           '<a class="ok" data-rc="' + i.number + '" data-res="直っていた" data-ver="' + esc(latest || state(i).fixed_in) + '" href="' + esc(form(i, 'fixed')) + '" target="_blank" rel="noopener">✅ Fixed</a>' +
           '<a class="ng" data-rc="' + i.number + '" data-res="まだおかしい" data-ver="' + esc(latest || state(i).fixed_in) + '" href="' + esc(form(i, 'still broken')) + '" target="_blank" rel="noopener">⚠️ Still broken</a>') + '</div></div>').join('');
-      // Pressing a button sends it right away (stored with your Google sign-in; we record it on GitHub. Nothing to do on GitHub)
+      // Pressing a button sends it right away (stored with your Google sign-in)
       $('#rc-list').onclick = async e => {
         const a = e.target.closest('a[data-rc]'); if (!a || !window.sendRecheck) return;
         e.preventDefault();
@@ -237,7 +219,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
           await window.sendRecheck(n, r, a.dataset.ver);
           SENT[n] = r; try { localStorage.setItem('g3-rechecked', JSON.stringify(SENT)); } catch {}
           b.innerHTML = '<span class="sub">✅ Sent. Thank you (it will be recorded in a few minutes)' + (r === 'まだおかしい' ? '. If you can, please add details with the report form above' : '') + '</span>';
-        } catch (err) { b.innerHTML = '<span class="sub">Could not send (' + esc(err.code || err.message) + ').</span><a href="' + esc(gh) + '" target="_blank" rel="noopener">Send on GitHub</a>'; }
+        } catch (err) { b.innerHTML = '<span class="sub">Could not send (' + esc(err.code || err.message) + ').</span><a href="' + esc(FORM_URL) + '" target="_blank" rel="noopener">Send with the Google Form</a>'; }
       };
       $('#rc-count').textContent = todo.length + '';
       $('#recheck').style.display = 'block';
