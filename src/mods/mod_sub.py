@@ -588,11 +588,7 @@ bk_r:   rts
 V_CEW   = $203ed6               ; キューブラッシュの終わり: 画面が止まったフレーム+1（共有RAMの空き。サブの私有RAMは途中で消されることがある）
 V_HUSED = $103728               ; このキューブラッシュで1体出した
 V_HALLOW = $10372c              ; 出してよいハンターの場所
-HuntCtl: cmpi.b #2,TOPSTATE.l
-        bne.w   hu_r
-        move.w  FRAMECNT.l,d0   ; 4フレームに1回（ハンターは出てから15フレームはこの種類のまま）
-        andi.w  #3,d0
-        cmpi.w  #1,d0
+HuntCtl: cmpi.b #2,TOPSTATE.l   ; #74: 毎フレーム見る（以前は4フレームに1回で、出てから消すまでの2〜3フレーム、画面の左端に映っていた）
         bne.w   hu_r
         tst.l   $2038de.l
         beq.w   hu_r
