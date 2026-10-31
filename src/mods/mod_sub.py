@@ -448,7 +448,7 @@ fe_x:   moveq   #0,d1               ; CUBE COLOR が有効か → $203ed4（メ�
         cmpi.b  #2,$203f0b.l
         bne.s   fc_s
         move.b  $203f34.l,d1
-        move.b  $203ed7.l,d2        ; CF_FLAG（#57）
+        move.b  $203e2a.l,d2        ; CF_FLAG（#57・#73）
 fc_s:   move.b  d1,V_CCW.l
         move.b  d2,$103758.l        ; V_CFW（mod_menu）
         jsr     CubeCol.l

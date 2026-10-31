@@ -167,7 +167,7 @@ def line_pal():
 CS_FLAG = 0x203e23     # CUBE SE（#60。0=OFF / 1〜=CUBE_SE の何番目の音。共有RAM $103E23。メニューから始めるたびに OFF）
 # キューブが反応する瞬間の音（#60）: (表示, 音の番号)。表示は6文字まで。サブの CSE_TBL もここから作る
 CUBE_SE = [('SE 0E ', 0x0e), ('SE 29 ', 0x29), ('SE 01 ', 0x01), ('SE 1E ', 0x1e)]
-CF_FLAG = 0x203ed7     # ON/OFF（共有RAM $103ED7。#57：$103813 は始め直しでゲームが消すので移した。メニューから始めるたびに OFF）
+CF_FLAG = 0x203e2a     # ON/OFF（共有RAM $103E2A。#57 で $103813 → $103ED7 に移したが、$103ED7 は V_CEW（$103ED6.w）の下半分で毎フレーム消されていた → #73 で $103E2A へ。メニューから始めるたびに OFF）
 CF_N    = 12           # 反応の何フレーム前から光らせるか
 def _white_pal():
     P = _stage9_pal()
@@ -752,7 +752,7 @@ mi_ah:  move.b  (a0),(a1)+
         clr.b   $203f3b.l       ; CUBE LINE H
         clr.b   $203f0c.l
         clr.b   $203f34.l       ; CUBE COLOR
-        clr.b   $203ed7.l       ; CUBE FLASH（#48・#57）
+        clr.b   $203e2a.l       ; CUBE FLASH（#48・#57・#73）
         clr.b   $203e23.l       ; CUBE SE（#60）
         clr.b   $203f33.l       ; CUBE HUNTER（始めは OFF = 出さない）
         jsr     ClrAll.l
