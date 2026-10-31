@@ -23,13 +23,16 @@
     "メニューの各モードとディップスイッチ SW1:8 の OFF / ON で、NO DEATH の時間・キューブラッシュの残機・装備コマンドの回数が前の版と同じであること（MAME）"
    ],
    "known": [
+    "ポーズの CUBE FLASH を設定しても、カーソルを動かすと OFF に戻ってしまう（効かない）。次の版で直します（#73）",
+    "ポーズで CUBE COLOR を ON から OFF にすると、キューブが元の色に戻らず別の色（黄色など）になることがある。ポーズ中に起きやすい。次の版で直します（#76）",
+    "キューブラッシュで CUBE HUNTER が OFF でも、オプションハンターが画面の左端に一瞬（2〜3フレーム）映ることがある。次の版で直します（#74）",
     "CUBE SE の音の種類は仮のもので、あとで変えるかもしれない",
     "テストモードの CHARACTER ROM CHECK・COLOR TEST・COIN COUNTER TEST は使えない",
     "ディップスイッチ SW1:8 を ON にすると、コイン2（2つ目のコイン投入口）の料金設定が「2枚以上で1クレジット」側だけになり、1枚1クレジットなどが選べなくなります（初期値の 1枚1クレは SW1:8 が OFF のときの設定です）。コイン2を使っていない場合は影響ありません",
     "面クリア直後の即死の修正は、実機での確認がまだ",
     "HIT DISP は地形の当たり（見えている地形の絵そのもの）は描かない。ON にすると処理が少し増える",
     "CUBE FLASH が ON の間、CUBE COLOR の灰色（反応しないキューブ）は出ず、元の色になる。点滅の白の間に1フレームだけ元の色に戻ることがある",
-    "パワーアップで5速にしてから、それより遅い SPEED の装備コマンドを使うと、ゲージの SPEED UP の字が消えたままになる",
+    "パワーアップで5速にしてから、それより遅い SPEED の装備コマンドを使うと、ゲージの SPEED UP の字が消えたままになる。次の版で直します（#3）",
     "オプションハンターは1周目の序盤など、ゲームの条件によってはもともと出ない（タイマーが進まない）",
     "装備コマンドは装備を足すだけなので、レーザー・ダブルを持っている状態からミサイル＋START を押してもノーマルショットには戻らない",
     "無敵中は壁の中に入り込める"
@@ -54,13 +57,16 @@
      "For each menu mode and DIP switch SW1:8 OFF / ON, the NO DEATH time, Cube Rush lives and power-up command count are the same as the previous version (MAME)"
     ],
     "known": [
+     "Setting CUBE FLASH in the pause menu returns to OFF when you move the cursor (it does not work). Will be fixed in the next version (#73)",
+     "Turning CUBE COLOR from ON to OFF in the pause menu can leave cubes in a wrong color (such as yellow) instead of their own color, especially while paused. Will be fixed in the next version (#76)",
+     "In Cube Rush with CUBE HUNTER OFF, an Option Hunter can flash at the left edge of the screen for a moment (2–3 frames). Will be fixed in the next version (#74)",
      "The CUBE SE sounds are provisional and may change",
      "CHARACTER ROM CHECK, COLOR TEST and COIN COUNTER TEST are not available in the test mode",
      "Turning DIP switch SW1:8 ON also limits the Coin B (second coin slot) pricing to \"2 or more coins per credit\"; settings such as 1 Coin/1 Credit are no longer available (the default 1 Coin/1 Credit needs SW1:8 OFF). It makes no difference if you do not use the second coin slot",
      "The fix for the sudden death right after a stage clear has not been checked on real hardware yet",
      "HIT DISP does not show terrain hits (the visible terrain graphics are themselves the hit area). Turning it on adds a little processing",
      "While CUBE FLASH is on, CUBE COLOR does not show gray for cubes that will not react; they keep their own color. During the white blink a cube can return to its color for one frame",
-     "If you reach speed 5 with power-ups and then use the power-up command with a slower SPEED, the SPEED UP label in the gauge stays blank",
+     "If you reach speed 5 with power-ups and then use the power-up command with a slower SPEED, the SPEED UP label in the gauge stays blank. Will be fixed in the next version (#3)",
      "The Option Hunter does not appear at all under some game conditions, such as early in the first loop (its timer does not advance)",
      "The power-up command only adds equipment, so pressing Missile + START while you have Laser or Double does not take you back to the normal shot",
      "While invincible you can go inside walls"
