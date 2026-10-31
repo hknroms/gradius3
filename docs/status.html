@@ -129,11 +129,11 @@ code{font-size:12.5px;background:color-mix(in srgb,var(--sub) 15%,transparent);p
     <div class="sub" style="margin-top:6px">各タスクのボタン（担当する・Claude に頼む・終わった など）は、GitHub の Issue にコマンドのコメントを書き込みます。数十秒でボットが状態を変えます。</div>
     <ul style="margin:6px 0;padding-left:20px">
       <li><b>連携なし</b>：ボタンを押すとコマンドをコピーして Issue を開くので、いちばん下のコメント欄に貼って「Comment」を押す。</li>
-      <li><b>連携あり</b>：ボタンだけで書き込む。下の手順でトークンを作って貼る（このブラウザにだけ保存されます）。</li>
+      <li><b>連携あり</b>：ボタンだけで書き込む。下の手順でトークンを作って貼る（一度貼れば、ほかの端末でもログインするだけで使えます。期限は「なし」で作れます）。</li>
     </ul>
     <div style="margin-top:6px"><b>hknroms（gradius3 の持ち主）</b></div>
     <ol>
-      <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub のトークン作成画面</a>を開く（Fine-grained token）。名前は前と重ならないものに（例：g3-status）</li>
+      <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub のトークン作成画面</a>を開く（Fine-grained token）。名前は前と重ならないものに（例：g3-status）。Expiration（有効期限）は「No expiration」（期限なし）を選べます</li>
       <li>Repository access →「Only select repositories」→ <code>gradius3</code></li>
       <li>Permissions →「Add permissions」→「Issues」→ <b>Read and write</b></li>
       <li>「Generate token」→ 出てきた文字列（<code>github_pat_…</code>）をコピーして下に貼る（画面の切り替わりが遅いことがあります）</li>
@@ -141,11 +141,11 @@ code{font-size:12.5px;background:color-mix(in srgb,var(--sub) 15%,transparent);p
     <div style="margin-top:6px"><b>共同管理者（ほかのアカウント）</b></div>
     <ol>
       <li><a href="https://github.com/settings/tokens/new?scopes=public_repo&amp;description=g3-status" target="_blank" rel="noopener">GitHub のトークン作成画面（classic）</a>を開く</li>
-      <li>「<b>public_repo</b>」にチェックが入っていることを確かめる（ほかは要りません）。Expiration（有効期限）を選ぶ</li>
+      <li>「<b>public_repo</b>」にチェックが入っていることを確かめる（ほかは要りません）。Expiration（有効期限）は「No expiration」（期限なし）を選べます</li>
       <li>「Generate token」→ 出てきた文字列（<code>ghp_…</code>）をコピーして下に貼る</li>
       <li>「完了にする」「差し戻す」を使うには、そのアカウントが gradius3 の共同編集者（招待済み）である必要があります。でなければ「自分がやる」「終わった」などだけ使えます</li>
     </ol>
-    <div class="sub">トークンは人に教えず、1人1つずつ作ってください（書いたコメントは、トークンを作った人の名前で残ります）。この画面でしか見られないので、自分用にメモしておくと、別のブラウザでも貼れます。</div>
+    <div class="sub">トークンは人に教えず、1人1つずつ作ってください（書いたコメントは、トークンを作った人の名前で残ります）。ここに一度貼れば、ほかの端末でも同じ Google アカウントでログインするだけで使えます（本人だけが読める所に保存）。「消す」を押すと、すべての端末で使えなくなります。</div>
     <input id="tok" type="password" placeholder="github_pat_… または ghp_…" autocomplete="off">
     <button type="button" id="toksave">保存</button> <button type="button" id="tokdel">消す</button> <span id="tokmsg" class="sub"></span>
   </details>
@@ -348,8 +348,17 @@ function tokUi() {
   document.getElementById('toksum').textContent = 'ボタンで操作する（GitHub の連携：' + (has ? '連携あり' : '連携なし') + '）';
 }
 document.addEventListener('click', e => {
-  if (e.target.id === 'toksave') { const v = document.getElementById('tok').value.trim(); if (!/^(github_pat_|ghp_)/.test(v)) { document.getElementById('tokmsg').textContent = 'github_pat_ か ghp_ で始まる文字列を貼ってください'; return; } LS.set('g3_gh_token', v); document.getElementById('tok').value = ''; document.getElementById('tokmsg').textContent = '保存しました'; tokUi(); }
-  if (e.target.id === 'tokdel') { LS.set('g3_gh_token', ''); document.getElementById('tokmsg').textContent = '消しました'; tokUi(); }
+  const tm = t => document.getElementById('tokmsg').textContent = t;
+  if (e.target.id === 'toksave') { const v = document.getElementById('tok').value.trim(); if (!/^(github_pat_|ghp_)/.test(v)) { tm('github_pat_ か ghp_ で始まる文字列を貼ってください'); return; } LS.set('g3_gh_token', v); document.getElementById('tok').value = ''; tokUi();
+    tm('保存しています…');
+    (window.ghTok ? window.ghTok.set(v) : Promise.reject()).then(() => tm('保存しました（ほかの端末でも、ログインするだけで使えます）'), () => tm('このブラウザにだけ保存しました（ほかの端末用の保存はできませんでした）')); }
+  if (e.target.id === 'tokdel') { LS.set('g3_gh_token', ''); tokUi(); tm('消しています…');
+    (window.ghTok ? window.ghTok.del() : Promise.reject()).then(() => tm('消しました（ほかの端末でも使えなくなります）'), () => tm('このブラウザから消しました')); }
+});
+// ログインしたとき、このブラウザにトークンが無ければ、保存してあるもの（admin_tokens）を読んで使う
+window.addEventListener('gate-open', async () => {
+  if (token() || !window.ghTok) return;
+  try { const v = await window.ghTok.get(); if (v) { LS.set('g3_gh_token', v); tokUi(); } } catch {}
 });
 
 // 状態の枠を押すと、その状態の一覧へ移る（URL の # は画面切り替えに使っているので変えない）

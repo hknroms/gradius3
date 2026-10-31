@@ -34,6 +34,19 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // まとめページ（docs/status.html）のボタン用 GitHub トークン。管理者として登録された本人だけが自分の分を読み書き・削除できる（2026-10-31）。
+    match /admin_tokens/{userId} {
+      allow read, delete: if request.auth != null
+        && request.auth.uid == userId
+        && exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower()));
+      allow create, update: if request.auth != null
+        && request.auth.uid == userId
+        && exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower()))
+        && request.resource.data.keys().hasOnly(['token', 'updatedAt'])
+        && request.resource.data.token is string && request.resource.data.token.size() <= 300
+        && request.resource.data.updatedAt == request.time;
+    }
+
     // ステレオの聞き比べの記録（docs/stereo/sim.html の「記録を管理者に送る」）。
     // 承認された本人だけが自分の分を書ける・読める。管理者は申請の管理画面（Apps Script）で全員分を見る。
     match /stereo_results/{userId} {

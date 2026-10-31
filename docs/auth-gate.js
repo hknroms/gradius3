@@ -10,7 +10,7 @@
 // ※ GitHub Pages は誰でも見られるファイルしか置けないので、これは「入口の扉」。中身の Issue などは GitHub で公開されている。
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc, addDoc, collection, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyAVuANsHQGEDSEujscNoCXWlixBKAAIw1U',
@@ -62,6 +62,12 @@ function open(user) {
   window.sendRecheck = (issue, result, version) => addDoc(collection(db, 'rechecks'), {
     uid: user.uid, name: user.displayName || '', email: user.email || '', issue: Number(issue), result: String(result), version: String(version || ''), createdAt: serverTimestamp(),
   });
+  // まとめページ（管理者）のボタン用 GitHub トークン: 本人だけが読み書きできる admin_tokens/{uid} にも置き、どの端末でもログインだけで使えるようにする
+  if (MODE === 'admin') window.ghTok = {
+    get: async () => { const d = await getDoc(doc(db, 'admin_tokens', user.uid)); return d.exists() ? String(d.data().token || '') : ''; },
+    set: v => setDoc(doc(db, 'admin_tokens', user.uid), { token: String(v), updatedAt: serverTimestamp() }),
+    del: () => deleteDoc(doc(db, 'admin_tokens', user.uid)),
+  };
   window.dispatchEvent(new CustomEvent('gate-open', { detail: { email: user.email } }));
 }
 
