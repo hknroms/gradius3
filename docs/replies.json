@@ -2,6 +2,26 @@
  "_how": "配布ページのトップに出る「報告への回答」。Google フォームから報告してくれた方には、こちらから返事を返す手段がないので、ここに書いて気づいてもらう。要らなくなったら手で消す。新しいものを上に書く。",
  "replies": [
   {
+   "issue": 69,
+   "date": "2026-10-31",
+   "title": "#47の続き：純正ROMと処理落ちを比べた",
+   "body": "比べていただきありがとうございます。純正でも同じ感触とのことなので、改造が原因ではないものとして、この件はいったん閉じます。また気になる場面があれば、フォームから教えてください。",
+   "en": {
+    "title": "Follow-up to #47: compared slowdown with the original ROM",
+    "body": "Thank you for comparing. Since it feels the same on the original ROM, we will treat this as not caused by the mod and close it for now. If you notice anything else, please let us know through the form."
+   }
+  },
+  {
+   "issue": 68,
+   "date": "2026-10-31",
+   "title": "キューブ解析ページ：ランク16以上の速さ（7ドットで固定）について",
+   "body": "ご指摘ありがとうございます。プログラムを確かめました。キューブが自機へ向かう速さは「2周目以降か、ランクが16以上なら7ドット、そうでなければランクの表（4〜6.5ドット）」という作りで、ランク17以上の値は速さの計算に使われていません。なので、1周目・2周目以降とも、ランク16と31で速さは同じです（2周目以降はランクに関係なく、いつも7ドットでした。これは解析ページに書き足しました）。避けにくさの違いは、速さ以外（キューブの数や並び、処理落ちなど）から来ている可能性があります。",
+   "en": {
+    "title": "Cube analysis page: cube speed at rank 16 and above (fixed at 7 dots)",
+    "body": "Thank you for pointing this out. We checked the program. The speed of a cube flying at the ship is 7 dots if it is the 2nd loop or later, or if the rank is 16 or more; otherwise it comes from a rank table (4 to 6.5 dots). Rank values of 17 or more are not used in the speed calculation, so ranks 16 and 31 give the same speed in every loop (from the 2nd loop on, it is always 7 dots regardless of rank; we added this to the analysis page). The difference in difficulty may come from something other than speed (number and pattern of cubes, slowdown, etc.)."
+   }
+  },
+  {
    "issue": 60,
    "date": "2026-10-31",
    "title": "キューブラッシュで、キューブが自機を狙って加速する瞬間にSEを鳴らしたい／出現タイミングのフレーム表",
