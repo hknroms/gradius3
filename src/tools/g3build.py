@@ -32,6 +32,7 @@ class Rom:
 
     def put(self, cpu, addr, data, tag='', expect=None, free_ok=False):
         im = self.img(cpu); o = self.orig(cpu)
+        assert addr + len(data) <= len(o), f'{cpu}:{addr:x}+{len(data)} ROM の終わりを越えた ({tag})'
         cur = bytes(o[addr:addr+len(data)])
         if expect is not None:
             assert cur == bytes(expect), f'{cpu}:{addr:x} expect mismatch {cur.hex()} != {bytes(expect).hex()} ({tag})'

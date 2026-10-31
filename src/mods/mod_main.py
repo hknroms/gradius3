@@ -39,7 +39,8 @@ RAMMAGIC = 0x103abe     # 共有RAMのコードを写し終えた印（サブが
 MAGICVAL = 0x4d4f
 LCNT = 0x103abc          # 写している間のフレーム数（R3 の最後の語。写し終えたら使わない）
 REGIONS = [('C', 0x3fd6a, 0x3ffc0, 'rom'),   # 2026-10-30 拡張: $3fd6a〜$3fd99 の 48B はデモ入力の後ろのゼロ・参照なし（TECH.md「ROM の空き」の候補を使用）
-           ('R1', 0x103860, 0x1038d4, 'shr'), ('R2', 0x103966, 0x1039c0, 'shr'), ('R3', 0x1039c6, LCNT, 'shr'),
+           ('R1', 0x103860, 0x1038d4, 'shr'), ('R2', 0x103966, 0x1039c0, 'shr'),
+           # R3（$1039C6〜$103ABB）は受け渡し場所 STAGE だけに使う。コードを置くと起動時の ROM CHECK でサブ（N17・R17）が BAD になった（#101、2026-11-01）
            ('M1', 0x40500, 0x405e0, 'mrm'), ('M2', 0x42e78, 0x43000, 'mrm'), ('M3', 0x43f70, 0x44000, 'mrm')]
 # #41 テストモードの小機能のうち消すもの（2026-10-31 管理者：CHARACTER ROM CHECK・COLOR TEST・COIN COUNTER TEST）。
 # 小機能の表 $808（7つ）の消す番号を「次の小機能へ進むだけ」の短い処理（TM_SKIP、0 番の場所の先頭 10B）に向け、残りを改造のコードの置き場所にする。
@@ -618,8 +619,8 @@ db_inv: addq.l  #4,sp
 """)
 # #35 その場復活: 0x7c88 の move.b #2,$400a2.l（爆発が終わった → やり直しの流れへ）を置き換え。
 # サブが毎フレーム $103816 に「その場復活してよいか」を置く（改造プレイ・MODE が RESPAWN か RESPAWN NO DEATH・1人・残機2以上）。
-# よいときは、やり直しに入らず、残機を1つ減らして（純正の $3B00 と同じ）自機だけ出し直す（$7732: 装備・オプションは純正の死亡と
-# 同じに戻り、左から登場）。状態5（プレイ中）のまま続くので、スクロール・地形・敵はそのまま。4面（3D）は $AE8E を通るので対象外
+# よいときは、やり直しに入らず、残機を1つ減らして（純正の $3B00 と同じ）自機だけ出し直す（$7732 で左から登場。
+# 装備は #101 の決まりで1つだけ失って付け直す）。状態5（プレイ中）のまま続くので、スクロール・地形・敵はそのまま。4面（3D）は $AE8E を通るので対象外
 chunk('Rsp', """
 Rsp:    tst.b   $103816.l
         bne.s   rp_go
@@ -631,7 +632,65 @@ rp_go:  move.b  $50(a0),d7
         dc.w    $8f06           ; sbcd d6,d7
         move.b  d7,$50(a0)
         ori.b   #1,$63(a0)
+        ; #101 死ぬ前の装備から1つだけ失う（上から最初に当てはまるもの）:
+        ;   オプション−1 / ダブル・レーザー→ノーマル / ミサイルなし / ゼロ速＋ゲージを SPEED（保険）。シールドは毎回なくなる
+        moveq   #0,d0
+        move.b  $68(a0),d2      ; d2 = オプションの数
+        andi.b  #7,d2
+        move.b  $69(a0),d3      ; d3 = スピードの段階
+        andi.b  #$1f,d3
+        moveq   #0,d4           ; d4 = ショット（0=ノーマル 3=ダブル 4=レーザー）: ゲージの「取った」印（$76・$78 = $08xx）で見る
+        cmpi.b  #8,$76(a0)      ;   （$6C の値はウェポンの型で違うので、純正の $8A5C と同じ結果になる印を使う）
+        bne.s   rp_l
+        moveq   #3,d4
+rp_l:   cmpi.b  #8,$78(a0)
+        bne.s   rp_m
+        moveq   #4,d4
+rp_m:   moveq   #0,d5           ; d5 = ミサイル（$6D≠0 なら1）
+        tst.b   $6d(a0)
+        beq.s   rp_n
+        moveq   #1,d5
+rp_n:
+        move.b  $6a(a0),d6      ; d6 = カプセルゲージの位置
+        tst.b   d2
+        beq.s   rp_1
+        subq.b  #1,d2
+        bra.s   rp_k
+rp_1:   tst.b   d4
+        beq.s   rp_2
+        moveq   #0,d4
+        bra.s   rp_k
+rp_2:   tst.b   d5
+        beq.s   rp_3
+        moveq   #0,d5
+        bra.s   rp_k
+rp_3:   moveq   #0,d3
+        moveq   #1,d6
+rp_k:   lea     -8(a7),a7       ; 装備コマンドと同じ並び [SPEED,MISSILE,DOUBLE,LASER,OPTION,SHIELD,下げる印] ＋ゲージ
+        clr.l   (a7)
+        clr.l   4(a7)
+        move.b  d3,(a7)
+        move.b  d5,1(a7)
+        cmpi.b  #4,d4
+        bne.s   rp_d
+        move.b  #1,3(a7)
+        bra.s   rp_o
+rp_d:   tst.b   d4
+        beq.s   rp_o
+        move.b  #1,2(a7)
+rp_o:   move.b  d2,4(a7)
+        move.b  d6,7(a7)
+        move.l  a0,-(a7)
         jsr     $7732.w
+        movem.l d0-d7/a0-a6,-(a7)
+        movea.l 60(a7),a2       ; 自機
+        lea     64(a7),a4       ; 付け直す装備
+        movea.l a2,a0           ; ゲージの表を始めの状態に戻す（純正の $89B0〜。やり直しの流れで通る所。$7732 は戻さないので、
+        jsr     $89b0.l         ;   以前は取った印が残り、復活の後にカプセルでミサイルなどが取れなかった）
+        jsr     CmdUse.l
+        move.b  7(a4),$6a(a2)
+        movem.l (a7)+,d0-d7/a0-a6
+        lea     12(a7),a7
         move.w  #$b00,d7        ; 残機の表示を描き直す（表示の依頼 11 = $1A72。純正はやり直しの流れで描く）
         jsr     $1622.w
         move.b  #180,$103817.l  ; 復活の後の無敵（約3秒。サブが自機を動かせる間だけ減らす）
@@ -936,7 +995,12 @@ cm_go:  movem.l d0-d7/a0-a6,-(a7)
         beq.s   cm_p
         lea     $101080.l,a2
         lea     $103f2c.l,a4
-cm_p:   lea     $101f60.l,a3    ; 取得処理(0x8b0e)と同じ: シールド等のオブジェクト枠
+cm_p:   bsr.s   CmdUse
+        move.b  $103f23.l,$6a(a2) ; カプセルゲージの位置 = メニューの CAPSULE（#5）
+        movem.l (a7)+,d0-d7/a0-a6
+cm_r:   rts
+; a2=自機 a4=[SPEED,MISSILE,DOUBLE,LASER,OPTION,SHIELD の回数, スピードを下げる印]（#101 その場復活の付け直しも使う）
+CmdUse: lea     $101f60.l,a3    ; 取得処理(0x8b0e)と同じ: シールド等のオブジェクト枠
         moveq   #0,d0
         move.b  6(a4),d0        ; スピードを下げる印（目標+1）
         beq.s   cm_s
@@ -953,9 +1017,7 @@ cm_lp:  move.b  -1(a4,d3.w),d4
         addq.w  #1,d3
         cmpi.w  #7,d3
         bne.s   cm_lp
-        move.b  $103f23.l,$6a(a2) ; カプセルゲージの位置 = メニューの CAPSULE（#5）
-        movem.l (a7)+,d0-d7/a0-a6
-cm_r:   rts
+        rts
 ; d3=枠番号 d4=回数
 Use:    andi.w  #$ff,d4
         subq.w  #1,d4
@@ -1246,6 +1308,7 @@ def apply(rom):
     byname = {c[0]: c for c in chunks}
     chunks = [(n, s, w | {'stream'}) for n, s, w in (byname[k] for k in COLD if k in byname)] + [c for c in chunks if c[0] not in COLD]
     place, out, lab, size, left = mainpack.layout(chunks, REGIONS, STREAM, CONSTS, data=('StateTbl', 'GreyPal', 'BossProg'))
+    if os.environ.get("PLACE"): print({k: (v, size[k]) for k, v in place.items() if v and v[0][0] in "RMXC"})
     global RAMBLOB
     kinds = {r[0]: r[3] for r in REGIONS}
     shr, mrm = {}, {}

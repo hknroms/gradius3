@@ -241,7 +241,7 @@ CUBE_SE = [('SE 1E ', 0x1e), ('SE 0E ', 0x0e), ('SE 15 ', 0x15), ('SE 1C ', 0x1c
 CF_FLAG = 0x203e2a     # ON/OFF（共有RAM $103E2A。#57 で $103813 → $103ED7 に移したが、$103ED7 は V_CEW（$103ED6.w）の下半分で毎フレーム消されていた → #73 で $103E2A へ。メニューから始めるたびに OFF）
 HT_VAL = 0x203e2b      # #92 HUNTER TIME（ポーズ。0=OFF 1〜100=0〜99秒。共有RAM $103E2B。再開のときメインの HtApply が使って 0 に戻す）
 LG_FLAG = 0x203e25     # #100 LAG METER（ポーズ。0=OFF 1=ON。共有RAM $103E25。メニューから始めるたびに OFF）
-HD_FLAG = 0x2039c6     # #96 HUNTER DISP（ポーズ。0=OFF 1=ON。共有RAM の空き $1039C6。メニューから始めるたびに OFF）
+HD_FLAG = 0x203e29     # #96 HUNTER DISP（ポーズ。0=OFF 1=ON。共有RAM $103E29（以前の $1039C6 は改造のコードの置き場 R3 と重なっていた）。メニューから始めるたびに OFF）
 CF_N    = 12           # 反応の何フレーム前から光らせるか
 def _white_pal():
     P = _stage9_pal()
@@ -2618,7 +2618,7 @@ PI_CS   = 20               ; #60 CUBE SE
 PI_TIME = 19               ; #55 NO DEATH の残り時間（読むだけ。値は PDraw が作る）
 HT_VAL  = $203e2b
 LG_FLAG = $203e25
-HD_FLAG = $2039c6
+HD_FLAG = $203e29
 PI_LG   = 23               ; #100 LAG METER（ON/OFF）
 PI_HC   = 22               ; #96 HUNTER DISP（ON/OFF）
 PI_HT   = 21               ; #92 HUNTER TIME（閉じてから何秒後にオプションハンターを出すか。値 HT_VAL: 0=OFF 1〜100=0〜99秒。再開のときメインの HtApply が使う）
